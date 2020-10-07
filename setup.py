@@ -9,7 +9,7 @@ setup(
     packages=find_packages(exclude=[]),
     long_description=open('README.md').read(),
     long_description_content_type='text/x-rst; charset=UTF-8',
-    install_requires=['ipython==7.14.0','datajoint>=0.12.5','pynwb>=1.4']
+    install_requires=['datajoint>=0.12.5','pynwb>=1.4']
 )
 
 
