@@ -5,7 +5,9 @@ function nwb = nwb_from_txt(inputDir, outputDir)
 %   inputDir and produce a single NWB file saved to outputDir.
 %
 %   The input text files should contain...
-
+%
+%   REQUIRES:
+%   MatNWB  https://github.com/NeurodataWithoutBorders/matnwb
 
   subject = 'testMouse'; % Get this from a txt file
   sessionStartTime = datetime('now'); % Get this from a txt file
