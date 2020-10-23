@@ -2,7 +2,7 @@
 Definition of NWB file structure for behavior data from basic task.
 """
 
-nwbformat = \
+schema = \
 {
     "session_description": "Behavior data. Two-alternative choice visual/auditory discrimination.",
     "subject": {
@@ -16,15 +16,21 @@ nwbformat = \
     },
     "acquisition": {
         "rotary_encoder": {
+            "description": "Value of rotary encoder on running wheel",
             "filename": "Encoder_Value.txt",
-            "timestamps": "x"
+            "timestamps": "Date_Encoder_Time.txt",
+            "unit": ""
         }
     },
     "processing": {
+        '''
         "pupil_size": {
+            "description": "Area of pupil",
             "filename": "",
-            "timestamps": ""
+            "timestamps": "",
+            "unit": ""
         }
+        '''
     },
     "trials": {
         "auditory_stim_id": {
@@ -32,10 +38,9 @@ nwbformat = \
             "filename": "Auditory ID.txt",
             "dtype": "int"
         },
-        "sound_frequency": {
-            "description": "Sound frequency",
-            "unit": "Hz",
-            "filename": "Hz.txt",
+        "tone_cloud_coherence": {
+            "description": "Coherence of the auditory tone-cloud stimulus",
+            "filename": "Tone Cloud Coherence.txt",
             "dtype": "float"
         },
         "target_port": {
