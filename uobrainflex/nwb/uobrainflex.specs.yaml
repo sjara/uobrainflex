@@ -1,0 +1,17 @@
+groups:
+- neurodata_type_def: LabMetaData_ext
+  neurodata_type_inc: LabMetaData
+  doc: Extension for uobrainflex metadata
+  attributes:
+  - name: rig
+    dtype: text
+    doc: Rig where data was collected.
+  - name: session_type
+    dtype: text
+    doc: Type of behavior session.
+  - name: training_stage
+    dtype: text
+    doc: Stage of behavioral training.
+  - name: behavior_version
+    dtype: text
+    doc: Version of schema used to translate LabView data to NWB.

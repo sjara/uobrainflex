@@ -1,0 +1,10 @@
+namespaces:
+- author: Santiago Jaramillo
+  doc: Extension for uobrainflex metadata
+  name: uobrainflex_metadata
+  schema:
+  - namespace: core
+    neurodata_types:
+    - LabMetaData
+  - source: uobrainflex.specs.yaml
+  version: '1.0'
