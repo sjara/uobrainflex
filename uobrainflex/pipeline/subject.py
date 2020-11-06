@@ -18,7 +18,6 @@ class Strain(dj.Lookup):
     definition = """
     strain_name:                 varchar(64)
     ---
-    strain_description:          varchar(255)
     strain_url:                  varchar(255)
     strain_ts=CURRENT_TIMESTAMP: timestamp
     """
