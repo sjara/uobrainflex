@@ -1,5 +1,5 @@
 """
-Submit metadata to DataJoint.
+Utilities for interacting with the DataJoint database.
 """
 
 import os
@@ -13,7 +13,7 @@ import warnings
 # -- Ignore warning from NWB about namespaces already loaded --
 warnings.filterwarnings("ignore", message="ignoring namespace '.*' because it already exists")
 
-
+    
 def submit_behavior_session(nwbFullpath):
     """
     Add behavior session metadata to DataJoint database.
@@ -24,18 +24,20 @@ def submit_behavior_session(nwbFullpath):
     Returns:
         djBehaviorSession: DataJoint object pointing to the table of behavior sessions.
     """
-    
+
+    # -- Load metadata from the NWB file --
     ioObj = pynwb.NWBHDF5IO(nwbFullpath, 'r', load_namespaces=True)
     nwbFileObj = ioObj.read()
     subject = nwbFileObj.subject.subject_id
     experimenter = nwbFileObj.experimenter[0] # Use only first experimenter
     startTime =  nwbFileObj.session_start_time
-    sessionType = nwbFileObj.lab_meta_data['session_metadata'].session_type
-    trainingStage = nwbFileObj.lab_meta_data['session_metadata'].training_stage
-    behaviorVersion = nwbFileObj.lab_meta_data['session_metadata'].behavior_version
+    sessionType = nwbFileObj.lab_meta_data['metadata'].session_type
+    trainingStage = nwbFileObj.lab_meta_data['metadata'].training_stage
+    behaviorVersion = nwbFileObj.lab_meta_data['metadata'].behavior_version
     ioObj.close()
     filename = os.path.basename(nwbFullpath)
-    
+
+    # -- Get access to the database tables --
     djSubject = subjectSchema.Subject()
     djExperimenter = experimenterSchema.Experimenter()
     djSessionType = acquisitionSchema.BehaviorSessionType()
@@ -62,3 +64,16 @@ def submit_behavior_session(nwbFullpath):
     print('Inserted new session {}'.format(newSession))
 
     return djBehaviorSession
+
+
+def delete_entry():
+    '''
+    djSubject = subjectSchema.Subject()
+    djExperimenter = experimenterSchema.Experimenter()
+    djSessionType = acquisitionSchema.BehaviorSessionType()
+    djTrainingStage = acquisitionSchema.BehaviorTrainingStage()
+    djBehaviorSession = acquisitionSchema.BehaviorSession()
+    # djBehaviorSession.drop()
+    #(subject & "subject_id='xx007'").delete()
+    '''
+    pass
