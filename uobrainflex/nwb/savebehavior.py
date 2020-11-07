@@ -15,6 +15,44 @@ VERBOSE = True
 EXTENSION_FILE = 'uobrainflex.namespace.yaml'
 
 
+def read_schema(inputDir):
+    """
+    Load the schema used to convert txt files to NWB.
+    """
+    schemaStr = read_txt_data(inputDir, 'Str_behavior_version.txt', 'one_string')
+    schemaName = 'schema_'+schemaStr
+    schemaPath =  os.path.splitext(__name__)[0] + '.' + schemaName
+    schema_behavior = importlib.import_module(schemaPath)
+    return schema_behavior.schema
+
+
+def get_nwb_basename(inputDir):
+    """
+    Return name of the output NWB file given an input directory with .txt files
+    """
+    schema = read_schema(inputDir)
+    subject = read_txt_data(inputDir, schema['subject']['filename'], 'one_string')
+    sessionStartTime = read_txt_data(inputDir, schema['session_start_time']['filename'], 'datetime')
+    startTimeStr = sessionStartTime.strftime('%Y%m%dT%H%M%S')
+    nwbBasename = make_nwb_basename(subject,startTimeStr)
+    return nwbBasename
+
+
+def make_nwb_basename(subject, startTimeStr):
+    """
+    Create name of the output NWB file.
+    """
+    nwbBasename = '{}_behavior_{}.nwb'.format(subject,startTimeStr)
+    return nwbBasename
+
+
+def get_subject(inputDir):
+    """
+    Return name of subject given an input directory with .txt files
+    """
+    return read_txt_data(inputDir, 'Str_Animal_ID.txt', 'one_string')
+
+
 def read_txt_data(filedir, filename, datatype, fileprefix=''):
     """
     Reads data from a .txt file located in filedir.
@@ -40,14 +78,14 @@ def read_txt_data(filedir, filename, datatype, fileprefix=''):
     return data
 
 
-def to_nwb(inputDir, outputDir, schemaName=None, outputFilename=None, verbose=True):
+def to_nwb(inputDir, outputDir, schema=None, outputFilename=None, verbose=True):
     """
     Load all behavior data from txt files and save a single NWB file.
 
     Args:
         inputDir (str): folder containing all txt files.
         outputDir (str): destination folder for the NWB file.
-        schemaName (str): name of file containing definition of NWB file structure.
+        schema (dict): dictionary containing definition of NWB file structure.
         outputFilename (str): if None it will be created automatically.
         verbose (bool): if True, show message for each step.
 
@@ -56,9 +94,8 @@ def to_nwb(inputDir, outputDir, schemaName=None, outputFilename=None, verbose=Tr
         outputFullfile: full path to the output NWB file.
     """
 
-    schemaPath =  os.path.splitext(__name__)[0] + '.' + schemaName
-    schema_behavior = importlib.import_module(schemaPath)
-    schema = schema_behavior.schema
+    if schema is None:
+        schema = read_schema(inputDir)
     
     creationDate = datetime.now(tz=tzlocal())
 
@@ -77,7 +114,7 @@ def to_nwb(inputDir, outputDir, schemaName=None, outputFilename=None, verbose=Tr
     uniqueID = '{}_{}'.format(subject,startTimeStr)
 
     if outputFilename is None:
-        outputFilename = '{}_behavior_{}.nwb'.format(subject,startTimeStr)
+        outputFilename = make_nwb_basename(subject, startTimeStr)
 
     subjectObj = pynwb.file.Subject(subject_id=subject, species=species)
 
@@ -99,7 +136,7 @@ def to_nwb(inputDir, outputDir, schemaName=None, outputFilename=None, verbose=Tr
     metadata = {}
     for entryName, entryInfo in schema['metadata'].items():
         metadata[entryName] = read_txt_data(inputDir, entryInfo['filename'], 'one_string')
-    sessionMetadata = LabMetaData_ext(name='session_metadata', **metadata)
+    sessionMetadata = LabMetaData_ext(name='metadata', **metadata)
     nwbFile.add_lab_meta_data(sessionMetadata)
 
     # -- Store time series (running speed, pupil, etc) --
