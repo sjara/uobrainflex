@@ -46,10 +46,10 @@ subject = savebehavior.get_subject(inputDir)
 subjectOutputDir = os.path.join(config['BEHAVIOR']['nwb_data_path'], subject)
 nwbFilename = savebehavior.get_nwb_basename(inputDir)
 nwbFullpath = os.path.join(subjectOutputDir,nwbFilename)
+CONVERT_TO_NWB = True
 if not os.path.isdir(subjectOutputDir):
     print('Created a new folder for this subject: {}'.format(subjectOutputDir))
     os.mkdir(subjectOutputDir)
-    CONVERT_TO_NWB = True
 elif os.path.isfile(nwbFullpath):
     overwriteStr = input('File {} exists. Overwrite? [Y/n] '.format(nwbFullpath))
     CONVERT_TO_NWB = (overwriteStr.lower()=='y') or not overwriteStr

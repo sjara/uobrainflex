@@ -21,13 +21,13 @@ schema = \
             "filename": "Str_Rig_ID.txt"
         },
         "session_type": {
-            "filename": "Extra_session_type.txt"
+            "filename": "Str_Session_Type.txt"
         },
         "training_stage": {
-            "filename": "Extra_training_stage.txt"
+            "filename": "Str_Training_Stage.txt"
         },
         "behavior_version": {
-            "filename": "Str_behavior_version.txt"
+            "filename": "Str_Vehavior_Version.txt"
         },
     },
     "acquisition": {
