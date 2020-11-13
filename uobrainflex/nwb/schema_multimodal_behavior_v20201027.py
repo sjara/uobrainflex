@@ -27,7 +27,7 @@ schema = \
             "filename": "Str_Training_Stage.txt"
         },
         "behavior_version": {
-            "filename": "Str_Vehavior_Version.txt"
+            "filename": "Str_Behavior_Version.txt"
         },
     },
     "acquisition": {
