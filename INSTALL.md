@@ -5,24 +5,24 @@ It is recommended to install this package in a Python virtual environment, as de
 ## On Ubuntu Linux (20.04)
 
 1. Install virtualenvwrapper to manage Python virtual environments:
-  * `sudo apt install virtualenvwrapper`
+   * `sudo apt install virtualenvwrapper`
 1. Create a virtual environment:
-  * `mkvirtualenv uobrainflex`
-  * This should active the virtual environment, so `(uobrainflex)` should appear at the beginning of your prompt.
+   * `mkvirtualenv uobrainflex`
+   * This should active the virtual environment, so `(uobrainflex)` should appear at the beginning of your prompt.
 1. Choose or create a folder to install this package and go to that folder:
-  * `mkdir ~/src/`
-  * `cd ~/src/`
+   * `mkdir ~/src/`
+   * `cd ~/src/`
 1. Clone the repository:
-  * `git clone https://github.com/sjara/uobrainflex.git`
+   * `git clone https://github.com/sjara/uobrainflex.git`
 1. Install the package in editable/development mode:
-  * `cd uobrainflex`
-  * pip install -e ./
+   * `cd uobrainflex`
+   * pip install -e ./
 1. Create a configuration file and edit your settings:
-  * `cp uobrainflex_TEMPLATE.conf uobrainflex.conf`
-  * Open it with you favorite editor and change the settings.
+   * `cp uobrainflex_TEMPLATE.conf uobrainflex.conf`
+   * Open it with you favorite editor and change the settings.
 1. Test the installation:
-  * `cd scripts`
-  * `python3 test_installation.py`
+   * `cd scripts`
+   * `python3 test_installation.py`
 
 
 ## On Windows
@@ -33,24 +33,24 @@ These instructions assume you have installed the following applications:
 
 Open the Anaconda Powershell Prompt to follow the steps below:
 1. Create a virtual environment:
-  * conda create -n uobrainflex --clone base
+   * conda create -n uobrainflex --clone base
 1. Activate the virtual environment:
-  * conda activate uobrainflex
-  * If successful, `(uobrainflex)` should appear at the beginning of your prompt.
+   * conda activate uobrainflex
+   * If successful, `(uobrainflex)` should appear at the beginning of your prompt.
 1. Install dependencies:
-  * conda install -c conda-forge pynwb
-  * conda install -c conda-forge datajoint 
+   * conda install -c conda-forge pynwb
+   * conda install -c conda-forge datajoint 
 1. Choose or create a folder to install this package and go to that folder:
-  * `mkdir ~/src/`
-  * `cd ~/src/`
+   * `mkdir ~/src/`
+   * `cd ~/src/`
 1. Clone the repository:
-  * `git clone https://github.com/sjara/uobrainflex.git`
+   * `git clone https://github.com/sjara/uobrainflex.git`
 1. Install the package in editable/development mode:
-  * `cd uobrainflex`
-  * `pip install -e .`
+   * `cd uobrainflex`
+   * `pip install -e ./`
 1. Create a configuration file and edit your settings:
-  * `cp uobrainflex_TEMPLATE.conf uobrainflex.conf`
-  * Open it with you favorite editor and change the settings.
+   * `cp uobrainflex_TEMPLATE.conf uobrainflex.conf`
+   * Open it with you favorite editor and change the settings.
 1. Test the installation:
-  * `cd scripts`
-  * `python test_installation.py`
+   * `cd scripts`
+   * `python test_installation.py`
