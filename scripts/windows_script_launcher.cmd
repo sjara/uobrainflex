@@ -6,3 +6,4 @@
 call C:\Users\%USERNAME%\Anaconda\Scripts\activate.bat
 call conda activate uobrainflex
 call python C:\Users\%USERNAME%\src\uobrainflex\scripts\test_installation.py
+pause
