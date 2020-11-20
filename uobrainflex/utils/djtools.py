@@ -62,7 +62,7 @@ def submit_behavior_session(nwbFullpath):
 
     # FIXME: currently it defaults to replace
     djBehaviorSession.insert1(newSession, replace=True)
-    print('Inserted new session {}'.format(newSession))
+    print("Submitted session '{}' to DataJoint.".format(sessionID))
 
     return djBehaviorSession
 
