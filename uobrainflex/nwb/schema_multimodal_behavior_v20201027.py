@@ -21,7 +21,7 @@ schema = \
             "filename": "Str_Rig_ID.txt"
         },
         "session_type": {
-            "filename": "Str_Session_Type.txt"
+            "filename": "Str_Session_Target_Modality.txt"
         },
         "training_stage": {
             "filename": "Str_Training_Stage.txt"
@@ -33,8 +33,8 @@ schema = \
     "acquisition": {
         "pupil_size": {
             "description": "Area of pupil.",
-            "filename": "pupil_size.txt",
-            "timestamps": "pupil_time.txt",
+            "filename": "Num_Pupil_Size.txt",
+            "timestamps": "Time_Pupil_Time.txt",
             "unit": ""
         },
         "running_speed": {
