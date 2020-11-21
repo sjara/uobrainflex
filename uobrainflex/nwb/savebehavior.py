@@ -62,13 +62,12 @@ def read_txt_data(filedir, filename, datatype, fileprefix=''):
         with open(fullpath, 'r') as file:
             data = file.readline().strip()
     elif datatype == 'float':
-        data = np.loadtxt(fullpath, dtype=float)
+        data = np.loadtxt(fullpath, ndmin=1, dtype=float)
     elif datatype == 'int':
-        data = np.loadtxt(fullpath).astype(int)
+        data = np.loadtxt(fullpath, ndmin=1).astype(int)
     elif datatype == 'datetime':
         with open(fullpath, 'r') as file:
             dstr = file.readline().strip()
-            #dateNoTZ = datetime.strptime(dstr,'%y-%m-%dT%H:%M:%S.%f')
             dateNoTZ = datetime.strptime(dstr,'%Y-%m-%dT%H:%M:%S.%f')
             data = dateNoTZ.replace(tzinfo=tzlocal())
     elif datatype == 'timestamp':
