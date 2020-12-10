@@ -5,17 +5,17 @@ and register the data onto a DataJoint database.
 Many of these steps require your configuration file (uobrainflex.conf)
 to indicate the correct paths for cloud storage and DataJoint.
 
-Options for how to use this script:
+There are three different ways to run the script:
 
-1. Run it by specifying the file containing a list of directories to process:
-   python convert_multiple_behavior.py /data/labview/list_of_folders.txt
+1. Specify the file containing a list of directories to process:
+   python convert_behavior.py /data/labview/list_of_folders.txt
 
-2. Run it without arguments to open a GUI and select the file that specifies
-   the list of directories to process:
-   python convert_multiple_behavior.py
+2. Run the script without arguments to open a GUI and select the file
+   that specifies the list of directories to process:
+   python convert_behavior.py
 
-3. Run it by specifying a single directory to process:
-   python convert_multiple_behavior.py /data/labview/testmouse_201028_141726/
+3. Specify a single data directory to process:
+   python convert_behavior.py /data/labview/testmouse_201028_141726/
 """
 
 import os
@@ -76,8 +76,8 @@ for inputDir in folders:
         print('Created a new folder for this subject: {}'.format(subjectOutputDir))
         os.mkdir(subjectOutputDir)
     elif os.path.isfile(nwbFullpath):
-        overwriteStr = input('File {} exists. Overwrite? [Y/n] '.format(nwbFullpath))
-        CONVERT_TO_NWB = (overwriteStr.lower()=='y') or not overwriteStr
+        overwriteStr = input('File {} exists. Overwrite? [y/N] '.format(nwbFullpath))
+        CONVERT_TO_NWB = (overwriteStr.lower()=='y') #or not overwriteStr
 
     if CONVERT_TO_NWB:
         nwbFile, nwbPath = savebehavior.to_nwb(inputDir, subjectOutputDir)
