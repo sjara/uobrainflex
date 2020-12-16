@@ -14,12 +14,16 @@ import importlib
 VERBOSE = True
 EXTENSION_FILE = 'uobrainflex.namespace.yaml'
 
+# FIXME: make the name of the behavior version and subject files as package setting.
+BEHAVIOR_VERSION_FILE = 'Behavior_Version.txt' # 'Str_behavior_version.txt'
+SUBJECT_FILE = 'Animal_ID.txt'
+
 
 def read_schema(inputDir):
     """
     Load the schema used to convert txt files to NWB.
     """
-    schemaStr = read_txt_data(inputDir, 'Str_behavior_version.txt', 'one_string')
+    schemaStr = read_txt_data(inputDir, BEHAVIOR_VERSION_FILE, 'one_string')
     schemaName = 'schema_'+schemaStr
     schemaPath =  os.path.splitext(__name__)[0] + '.' + schemaName
     schema_behavior = importlib.import_module(schemaPath)
@@ -50,7 +54,7 @@ def get_subject(inputDir):
     """
     Return name of subject given an input directory with .txt files
     """
-    return read_txt_data(inputDir, 'Str_Animal_ID.txt', 'one_string')
+    return read_txt_data(inputDir, SUBJECT_FILE, 'one_string')
 
 
 def read_txt_data(filedir, filename, datatype, fileprefix=''):
@@ -58,22 +62,26 @@ def read_txt_data(filedir, filename, datatype, fileprefix=''):
     Reads data from a .txt file located in filedir.
     """
     fullpath = os.path.join(filedir, fileprefix+filename)
-    if datatype == 'one_string':
-        with open(fullpath, 'r') as file:
-            data = file.readline().strip()
-    elif datatype == 'float':
-        data = np.loadtxt(fullpath, ndmin=1, dtype=float)
-    elif datatype == 'int':
-        data = np.loadtxt(fullpath, ndmin=1).astype(int)
-    elif datatype == 'datetime':
-        with open(fullpath, 'r') as file:
-            dstr = file.readline().strip()
-            dateNoTZ = datetime.strptime(dstr,'%Y-%m-%dT%H:%M:%S.%f')
-            data = dateNoTZ.replace(tzinfo=tzlocal())
-    elif datatype == 'timestamp':
-        with open(fullpath, 'r') as file:
-            datalines = file.read().splitlines()
-        data = [datetime.strptime(dstr,'%y-%m-%dT%H:%M:%S.%f').timestamp() for dstr in datalines]
+    try:
+        if datatype == 'one_string':
+            with open(fullpath, 'r') as file:
+                data = file.readline().strip()
+        elif datatype == 'float':
+            data = np.loadtxt(fullpath, ndmin=1, dtype=float)
+        elif datatype == 'int':
+            data = np.loadtxt(fullpath, ndmin=1).astype(int)
+        elif datatype == 'datetime':
+            with open(fullpath, 'r') as file:
+                dstr = file.readline().strip()
+                dateNoTZ = datetime.strptime(dstr,'%Y-%m-%dT%H:%M:%S.%f')
+                data = dateNoTZ.replace(tzinfo=tzlocal())
+        elif datatype == 'timestamp':
+            with open(fullpath, 'r') as file:
+                datalines = file.read().splitlines()
+            data = [datetime.strptime(dstr,'%y-%m-%dT%H:%M:%S.%f').timestamp() for dstr in datalines]
+    except ValueError:
+        print(f'ERROR: Format of data from file "{filename}" is not correct.')
+        raise
     return data
 
 
