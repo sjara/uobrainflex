@@ -34,7 +34,7 @@ else
     folders_for_analysis=folders_for_analysis{1};
 end
 
-clearvars -except folders_for_analysis folder_date main_folder sessions_file
+clearvars -except folders_for_analysis folder_date main_folder sessions_file user_selection
 %% set ROI, initial pupil, and filter settings
 for i=1:length(folders_for_analysis)
     avi_folder=[folders_for_analysis{i} '\AVI_Files'];
@@ -146,12 +146,13 @@ for i=1:length(folders_for_analysis)
     else % if pupil trace does not look good, or frame clock and frame count are off
          % then write nans for pupil data 
         bad_pupil_sessions{length(bad_pupil_sessions)+1}=session_folder;
+        cd(session_folder)
         writematrix(this_frame_clock,'Pupil_Time.txt')
-        writematrix(NaN(1,length(this_frame_clocK))),'Pupil_Size.txt')
+        writematrix(NaN(length(this_frame_clock),1),'Pupil_Size.txt')
     end
 end
 
-if user_selection<4
+if str2num(user_selection{1})<4
     cd(main_folder)
     writecell(good_pupil_sessions',[ folder_date '_good_pupil_sessions.txt'])
     writecell(bad_pupil_sessions',[folder_date '_bad_pupil_sessions.txt'])
