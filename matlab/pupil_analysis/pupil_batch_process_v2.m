@@ -4,16 +4,31 @@ cd(main_folder)
 mice = dir();
 mice(1:2)=[];
 mice=mice(find([mice.isdir]));
+i=1
+while i<=length(mice)
+    if sum(mice(i).name(1:4)=='Arch')==4
+        mice(i)=[]
+    end
+    i=i+1;
+end
 
 n=0;
+n2=0;
 for i = 1:length(mice)
     cd([mice(i).folder '\' mice(i).name])
     mouse_sessions = dir ([mice(i).name '*']);
     for j = 1:length(mouse_sessions)
         n=n+1;
+        cd([mouse_sessions(j).folder '\' mouse_sessions(j).name]);
+        if exist('Pupil_Time.txt') ~= 2
+            n2 = n2+1;
+            unanalyzed_folders{n2}=[mouse_sessions(j).folder '\' mouse_sessions(j).name];
+            unanalyzed_dates{n2} = mouse_sessions(j).date(1:11);
+        else
+        end
         all_session_folders{n}=[mouse_sessions(j).folder '\' mouse_sessions(j).name];
         mouse_session_dates{n} = mouse_sessions(j).date(1:11);
-    end
+    end 
 end
 
 upload_dates = datestr(sort(datenum(unique(mouse_session_dates)),'descend'));
@@ -21,11 +36,14 @@ user_selection = inputdlg(['Which upload date do you want to analyze?' sprintf('
     '1: ' upload_dates(1,:) sprintf('\n') ...
     '2: ' upload_dates(2,:) sprintf('\n')...
     '3: ' upload_dates(3,:) sprintf('\n')...
-    '4: Other']);
+    '4: Not Analyzed' sprintf('\n')...
+    '5: Other']);
 
-if str2num(user_selection{1})<4
+if str2num(user_selection{1})==5
     folder_date = upload_dates(str2num(user_selection{1}),:);
     folders_for_analysis = all_session_folders(find(contains(mouse_session_dates, folder_date)));
+elseif str2num(user_selection{1})==4
+    folders_for_analysis = unanalyzed_folders
 else
     cd(main_folder)
     sessions_file=uigetfile('*.txt', 'pick a file to indicate sessions to use!');
@@ -35,6 +53,7 @@ else
 end
 
 clearvars -except folders_for_analysis folder_date main_folder sessions_file user_selection
+
 %% set ROI, initial pupil, and filter settings
 for i=1:length(folders_for_analysis)
     avi_folder=[folders_for_analysis{i} '\AVI_Files'];
@@ -156,7 +175,11 @@ if str2num(user_selection{1})<4
     cd(main_folder)
     writecell(good_pupil_sessions',[ folder_date '_good_pupil_sessions.txt'])
     writecell(bad_pupil_sessions',[folder_date '_bad_pupil_sessions.txt'])
-else
+elseif str2num(user_selection{1})==4
+    cd(main_folder)
+    writecell(good_pupil_sessions',[datestr(today) '_analysis_good_pupil_sessions.txt'])
+    writecell(bad_pupil_sessions',[datestr(today) '_analysis_bad_pupil_sessions.txt'])
+elseif str2num(user_selection{1})==5
     cd(main_folder)
     writecell(good_pupil_sessions',[sessions_file(1:end-4) '_renalaysis_on_' datestr(today) '_good_pupil_sessions.txt'])
     writecell(bad_pupil_sessions',[sessions_file(1:end-4) '_renalaysis_on_' datestr(today) '_bad_pupil_sessions.txt'])

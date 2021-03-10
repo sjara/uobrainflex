@@ -66,8 +66,9 @@ if min_frame<300
 else
     t1=min_frame-300;
 end
-if min_frame+300>min_total_frames & min_vid_ind==length(ind)
-    t2=min_total_frames+(length(ind)-1)*videoframes;
+
+if min_frame+300>length(plmod)
+    t2=length(plmod);
 else
     t2=min_frame+300;
 end
@@ -81,8 +82,8 @@ if max_frame<300
 else
     t1=max_frame-300;
 end
-if max_frame+300>max_total_frames & max_vid_ind==length(ind)
-    t2=max_total_frames+(length(ind)-1)*videoframes;
+if max_frame+300>length(plmod)
+    t2=length(plmod);
 else
     t2=max_frame+300;
 end
