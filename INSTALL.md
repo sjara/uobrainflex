@@ -24,6 +24,13 @@ It is recommended to install this package in a Python virtual environment, as de
    * `cd scripts`
    * `python3 test_installation.py`
 
+### Additional requirements
+
+1. If you are using the SSM package https://github.com/lindermanlab/ssm (for example to apply a GLM-HMM), you need to install it as follows:
+   * `workon uobrainflex  # Activate the virtual environment`
+   * `pip install cython`
+   * `cd PATH/TO/ssm`
+   * `pip install -e ./`
 
 ## On Windows using Anaconda
 These instructions assume you have installed the following applications:
