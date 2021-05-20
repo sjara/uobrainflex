@@ -54,6 +54,8 @@ end
 
 clearvars -except folders_for_analysis folder_date main_folder sessions_file user_selection
 
+cd(main_folder)
+save([datestr(today) '-folders_for_analysis'],'folders_for_analysis')
 %% set ROI, initial pupil, and filter settings
 for i=1:length(folders_for_analysis)
     avi_folder=[folders_for_analysis{i} '\AVI_Files'];
@@ -62,12 +64,13 @@ for i=1:length(folders_for_analysis)
         DH_pupil_ROIs(avi_folder);
     else
         overwrite = inputdlg([folders_for_analysis{i} sprintf('\n') ...
-            'This session already has pupil ROIs set. Overwrite? y/n'])
+            'This session already has pupil ROIs set. Overwrite? y/n']);
         if overwrite{1} == 'y'
             DH_pupil_ROIs(avi_folder);
         end
     end
     close all
+    disp([num2str(i) ' of ' num2str(length(folders_for_analysis)) ' complete'])
 end
 %% pupil analysis
 for i=1:length(folders_for_analysis)
@@ -81,7 +84,7 @@ for i=1:length(folders_for_analysis)
     end
 end
 
-for i=1:length(folders_for_analysis)
+parfor i=1:length(folders_for_analysis)
     avi_folder=[folders_for_analysis{i} '\AVI_Files'];
     if ismember( analyze_ind{i}, 'y')
         disp(' ')
@@ -122,9 +125,9 @@ for i=1:length(folders_for_analysis)
     end
 end
 
-for i=1:length(folders_for_analysis)
+parfor i=1:length(folders_for_analysis)
     avi_folder=[folders_for_analysis{i} '\AVI_Files'];
-    if analyze_ind{i} == 'y'
+    if analyze_ind{i} == 'y' 
         disp(' ')
         disp(['Session ' num2str(i) ' of ' num2str(length(folders_for_analysis))])
         disp(['Filtering pupils in ' avi_folder])
@@ -145,17 +148,21 @@ for i=1:length(folders_for_analysis)
     avi_folder=[folders_for_analysis{i} '\AVI_Files'];
     session_folder=folders_for_analysis{i};
     cd(session_folder)
-    FC=dir('Time_LV_FrameCLock.txt')
+    FC=dir('Time_LV_FrameCLock.txt');
     if isempty(FC)
-        FC=dir('LV_FrameCLock.txt')
+        FC=dir('LV_FrameCLock.txt');
     end
-    this_frame_clock=load(FC(1).name)
+    if isempty(FC)
+        this_frame_clock=nan
+    else
+        this_frame_clock=load(FC(1).name);
+    end
     cd(avi_folder)
-    load('pupil_filt.mat')
+    load('pupil_filt.mat');
     open('pupil_analysis_overview.fig')
     disp('inspect figure for pupil fit parameters, then press any button')
     pause
-    happy=inputdlg('Happy? y/n')
+    happy=inputdlg('Happy? y/n');
     close all
     if happy{1}=='y' & length(pupil_filt)==length(this_frame_clock)
         good_pupil_sessions{length(good_pupil_sessions)+1}=session_folder;
@@ -173,7 +180,7 @@ end
 
 if str2num(user_selection{1})<4
     cd(main_folder)
-    writecell(good_pupil_sessions',[ folder_date '_good_pupil_sessions.txt'])
+    writecell(good_pupil_sessions',[folder_date '_good_pupil_sessions.txt'])
     writecell(bad_pupil_sessions',[folder_date '_bad_pupil_sessions.txt'])
 elseif str2num(user_selection{1})==4
     cd(main_folder)

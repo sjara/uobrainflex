@@ -24,12 +24,12 @@ emptyframe=zeros(size(this_frame));
 
 
 %% display range of binning/filtering options for selection
-n=0
-this_frame = this_frame(:,:,1)
+n=0;
+this_frame = this_frame(:,:,1);
 figure,
-filt_ind=0.01:0.01:0.2
+filt_ind=0.01:0.01:0.2;
 for i=filt_ind
-n=n+1
+n=n+1;
 this_frame_bin = uint8(imbinarize(this_frame, i)); %was 0.1
 %         this_frame_filt =  ordfilt2(this_frame_bin,1,ones(5,5)); %original
 this_frame_filt =  ordfilt2(this_frame_bin,1,ones(5,5));
@@ -40,9 +40,9 @@ xlabel(num2str(n))
 set(gca,'xtick',[],'ytick',[])
 end
 
-select_ind=inputdlg('Indicate best filtered image')
+select_ind=inputdlg('Indicate best filtered image');
             
-filt_ind=filt_ind(str2num(select_ind{1}))
+filt_ind=filt_ind(str2num(select_ind{1}));
 %%
 
 save('filt_ind','filt_ind')
