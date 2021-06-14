@@ -17,9 +17,10 @@ def get_file_path(subject, fileID):
     Return full path to an NWB file based on matching fileID. 
     Returns first file if multiple are found.
     Returns '' if no file with matching ID is found.
+    
     Args:
         subject (string): name of subject.
-        fileID (string): search input for nwb file. ideally 
+        fileID (string): search input for nwb file. ideally a unique identifier
     Returns:
         nwb_file_path (string): full path to an NWB file
     """
@@ -69,7 +70,7 @@ def load_behavior_measures(nwbfilepath, speriod=0.001, measures=[]):
         speriod (float): sample period in seconds.
         measures (list of strings): list of behavior measures to extract. 
     Returns:
-        behavior_measures (DataFrame): Dataframe where index = sample and columns = [measures, timestamps]
+        behavior_measures (DataFrame): Dataframe where index = samples, and columns = [measures, timestamps]
     """
     ioObj = pynwb.NWBHDF5IO(nwbfilepath, 'r', load_namespaces=True)
     this_data = ioObj.read()
@@ -85,19 +86,22 @@ def load_behavior_measures(nwbfilepath, speriod=0.001, measures=[]):
             max_time[idx] = (key_max[-1]/speriod).round(0).astype(int)           
     
     # crate index and corresponding timestamps from start of session
-    df_index = int(max(max_time))+1
-    timestamps = pd.date_range(this_data.session_start_time, periods=df_index-1, freq='{}ms'.format(speriod*1000))
+    df_index = int(max(max_time))
+    start_time = this_data.session_start_time.timestamp()
+    end_time = round(start_time+df_index*speriod,3)
+    timestamps=np.arange(int(start_time*1000), int(end_time*1000),int(1000*speriod))/1000  
     
-    behavior_measures = pd.DataFrame(index = range(df_index))    
+    behavior_measures = pd.DataFrame(index = range(df_index+1))    
     # extract all acquisition time series
     for key in measures:
         ts_data = this_data.get_acquisition(key).data[:]
         ts_time = this_data.get_acquisition(key).timestamps[:]
         idx = (ts_time/speriod).round(0).astype(int) # divide by sample period and round to find appropriate index for this measure
+        idx = idx[:ts_data.shape[0]]
         behavior_measures.loc[idx,key]=ts_data       # fit data to new sampling
     # interpolate dataframe to upsample and make full 
     behavior_measures = behavior_measures.iloc[:max(max_time).astype(int),:].interpolate(method = 'linear') 
-    behavior_measures['timestamps'] = timestamps.values
+    behavior_measures['timestamps'] = timestamps
     return behavior_measures
 
 def load_behavior_events(nwbfilepath, speriod=0.001, events=[]):
@@ -107,7 +111,8 @@ def load_behavior_events(nwbfilepath, speriod=0.001, events=[]):
         nwbfilepath (string): full path to an NWB file.
         events (list of strings): list of behavior events to extract.
     Returns:
-        behavior_events (dict of nparrays): dictionary of arrays of event times rounded to ms. NOTE: MAY NOT ALIGN WITH BEHAVIOR_MEASURES SAMPLING
+        behavior_events (dict of nparrays): dictionary of arrays of event times in UTC timestamps
+        behavior_events_index (dict of nparrays): dictionary of arrays of event times indexed from start time by speriod.
     """
     ioObj = pynwb.NWBHDF5IO(nwbfilepath, 'r', load_namespaces=True)
     this_data = ioObj.read()
@@ -120,18 +125,20 @@ def load_behavior_events(nwbfilepath, speriod=0.001, events=[]):
         key_max = this_data.get_acquisition(key).timestamps[:]
         if key_max.size > 0:
             max_time[idx] = (key_max[-1]/speriod).round(0).astype(int)           
-    
-    # crate index and corresponding timestamps from start of session
+        
     df_index = int(max(max_time))+1
-    timestamps = pd.date_range(this_data.session_start_time, periods=df_index, freq='{}ms'.format(speriod*1000))
-    
+    start_time = this_data.session_start_time.timestamp()
+    end_time = round(start_time+df_index*speriod,3)
+    timestamps=np.arange(int(start_time*1000), int(end_time*1000),int(1000*speriod))/1000
+
     behavior_events = {}
+    behavior_events_index={}
     for key in events:
         ts_time = this_data.get_acquisition(key).timestamps[:]
         idx = (ts_time/speriod).round(0).astype(int)
-        behavior_events[key] = timestamps[idx]          # will output as absolute timestamps
-        #behavior_events[key] = idx                     # will output as index corresponding to behavior_events
+        behavior_events[key] = timestamps[idx]
+        behavior_events_index[key] = idx
         
-    return behavior_events
+    return behavior_events, behavior_events_index
 
 
