@@ -124,7 +124,9 @@ def load_behavior_events(nwbfilepath, speriod=0.001, events=[]):
     for idx, key in enumerate(events):
         key_max = this_data.get_acquisition(key).timestamps[:]
         if key_max.size > 0:
-            max_time[idx] = (key_max[-1]/speriod).round(0).astype(int)           
+            max_time[idx] = (key_max[-1]/speriod).round(0).astype(int)
+        else:
+            max_time[idx]=0
         
     df_index = int(max(max_time))+1
     start_time = this_data.session_start_time.timestamp()
