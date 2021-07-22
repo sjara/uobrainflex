@@ -8,6 +8,8 @@ from . import djconnect
 from uobrainflex.pipeline import subject as subjectSchema
 from uobrainflex.pipeline import acquisition as acquisitionSchema
 from uobrainflex.pipeline import experimenter as experimenterSchema
+from uobrainflex.behavioranalysis import performance as performance
+
 import warnings
 
 # -- Ignore warning from NWB about namespaces already loaded --
@@ -28,13 +30,25 @@ def submit_behavior_session(nwbFullpath):
     # -- Load metadata from the NWB file --
     ioObj = pynwb.NWBHDF5IO(nwbFullpath, 'r', load_namespaces=True)
     nwbFileObj = ioObj.read()
+    #nwbFileObj = load.load_nwb_file(nwbFullpath)
+    
     sessionID = nwbFileObj.identifier
     subject = nwbFileObj.subject.subject_id
     experimenter = nwbFileObj.experimenter[0] # Use only first experimenter
     startTime =  nwbFileObj.session_start_time
     sessionType = nwbFileObj.lab_meta_data['metadata'].session_type
     trainingStage = nwbFileObj.lab_meta_data['metadata'].training_stage
-    behaviorVersion = nwbFileObj.lab_meta_data['metadata'].behavior_version
+    behaviorVersion = nwbFileObj.lab_meta_data['metadata'].behavior_version  
+    performance_dict = performance.get_summary(nwbFileObj)
+    licks_total = performance_dict['licks_total']
+    licks_left_ratio = performance_dict['licks_left_ratio']
+    choices_total = performance_dict['choices_total']
+    choices_left_stim_ratio = performance_dict['choices_left_stim_ratio']
+    hits_total = performance_dict['hits_total']
+    hits_left_ratio = performance_dict['hits_left_ratio']
+    hit_rate_left = performance_dict['hit_rate_left']
+    hit_rate_right = performance_dict['hit_rate_right']
+    
     ioObj.close()
     filename = os.path.basename(nwbFullpath)
 
@@ -58,7 +72,10 @@ def submit_behavior_session(nwbFullpath):
 
     # See pipeline.acquisition for order of attributes
     newSession = (sessionID, subject, startTime, sessionType, trainingStage,
-                  experimenter, filename, behaviorVersion, None)
+                  experimenter, filename, behaviorVersion, licks_total,
+                  licks_left_ratio, choices_total, choices_left_stim_ratio,
+                  hits_total, hits_left_ratio, hit_rate_left, hit_rate_right, 
+                  None)
 
     # FIXME: currently it defaults to replace
     djBehaviorSession.insert1(newSession, replace=True)
