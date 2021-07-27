@@ -25,7 +25,10 @@ def get_summary(nwbFileObj):
     licks_left = len(behavior_events['licks_left'])
     licks_right = len(behavior_events['licks_right'])
     licks_total = licks_left + licks_right
-    licks_left_ratio = licks_left/licks_total
+    if licks_total == 0:
+        licks_left_ratio = np.nan
+    else:
+        licks_left_ratio = licks_left/licks_total
 
 
 ## choices
@@ -50,7 +53,10 @@ def get_summary(nwbFileObj):
         
         left_trial_choices = len(np.where(response_trials.target_port == trial_dict['target_port']['left'])[0])
         choices_total = len(true_choice)
-        choices_left_trial_ratio = left_trial_choices/choices_total
+        if choices_total == 0:
+            choices_left_trial_ratio = np.nan
+        else:
+            choices_left_trial_ratio = left_trial_choices/choices_total
 
 ## hits
 
@@ -62,7 +68,10 @@ def get_summary(nwbFileObj):
     right_hits = len(np.intersect1d(right_trials,hits))
 
     hits_total = left_hits+right_hits
-    hits_left_ratio = left_hits/hits_total
+    if hits_total == 0:
+        hits_left_ratio = np.nan
+    else:
+        hits_left_ratio = left_hits/hits_total
 
 ## hit rate
     left_trials = np.where(response_trials['target_port'] == trial_dict['target_port']['left'])[0]
@@ -70,8 +79,14 @@ def get_summary(nwbFileObj):
     hits = np.where(response_trials.outcome == trial_dict['outcome']['hit'])[0]
     left_hits = len(np.intersect1d(left_trials,hits))
     right_hits = len(np.intersect1d(right_trials,hits))
-    hit_rate_left = left_hits/len(left_trials)
-    hit_rate_right = right_hits/len(right_trials)
+    if len(left_trials) == 0:
+        hit_rate_left = np.nan
+    else:
+        hit_rate_left = left_hits/len(left_trials)
+    if len(right_trials) ==0:
+        hit_rate_right = np.nan
+    else:
+        hit_rate_right = right_hits/len(right_trials)
     hit_rate_total = len(hits)/(len(left_trials)+len(right_trials))
 
 ## compile performance summary
