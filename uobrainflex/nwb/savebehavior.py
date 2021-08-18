@@ -143,6 +143,8 @@ def to_nwb(inputDir, outputDir, schema=None, outputFilename=None, verbose=True):
     metadata = {}
     for entryName, entryInfo in schema['metadata'].items():
         metadata[entryName] = read_txt_data(inputDir, entryInfo['filename'], 'one_string')
+    for entryName in set(LabMetaData_ext.__dict__['__nwbfields__']).symmetric_difference(set(metadata)):
+        metadata[entryName] = ''
     sessionMetadata = LabMetaData_ext(name='metadata', **metadata)
     nwbFile.add_lab_meta_data(sessionMetadata)
 

@@ -42,6 +42,20 @@ LabMetaData_ext.add_attribute(
 )
 
 LabMetaData_ext.add_attribute(
+        name='auditory_stim_association',
+        doc='Descriptor of auditory stimulus-lick port association.',
+        dtype='text',
+        shape=None,
+)
+
+LabMetaData_ext.add_attribute(
+        name='visual_stim_association',
+        doc='Descriptor of auditory stimulus-lick port association.',
+        dtype='text',
+        shape=None,
+)
+
+LabMetaData_ext.add_attribute(
         name='behavior_version',
         doc='Version of schema used to translate LabView data to NWB.',
         dtype='text',

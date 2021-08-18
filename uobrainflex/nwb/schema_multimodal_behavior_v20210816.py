@@ -29,13 +29,31 @@ schema = \
         "behavior_version": {
             "filename": "Behavior_Version.txt"
         },
+	    "visual_stim_association": {
+            "filename": "Visual_Stim_Map.txt"
+        },
+        "auditory_stim_association": {
+            "filename": "Auditory_Stim_Map.txt"
+        }
     },
     "acquisition": {
 	"whisker_energy": {
             "description": "Pixel intensity time differential within whisker pad ROI.",
             "filename": "Whisker_Energy.txt",
             "timestamps": "LV_FrameClock.txt",
-            "unit": ""
+            "unit": "a.u."
+        },
+	"pupil_area": {
+            "description": "The pixel area of the pupil per frame calculated online during behavioral performance.",
+            "filename": "Pupil_Area.txt",
+            "timestamps": "LV_FrameClock.txt",
+            "unit": "sq_pixels"
+        },
+	"pupil_diameter": {
+            "description": "Pixel length of the long axis of the pupil per frame calculated online during behavioral performance.",
+            "filename": "Pupil_Diameter.txt",
+            "timestamps": "LV_FrameClock.txt",
+            "unit": "pixels"
         },
         "running_speed": {
             "description": "Speed of the animal, estimated from the rotary encoder on the wheel.",
@@ -63,7 +81,6 @@ schema = \
             "timestamps": "Right_Pump.txt",
             "unit": "s"
         }
-        
     },
     "trials": {
         "start_time": {
@@ -126,8 +143,14 @@ schema = \
 	    "filename": "Auditory_ID.txt",
             "dtype": "int"
         },
+    "auditory_stim_band": {
+            "description": "Target band of presented tone cloud",
+            "map": {'low_band':0, 'high_band':1},
+ 	    "filename": "Tone_Cloud_Octave.txt",
+            "dtype": "int"
+        },
 	"auditory_stim_difficulty": {
-            "description": "Tone cloud coherence",
+            "description": "Ratio of tones selected from target frequency band",
 	    "filename": "Tone_Cloud_Coherence.txt",
             "dtype": "float"
         },
@@ -135,6 +158,18 @@ schema = \
             "description": "Visual stimulus ID",
             "map": {'left':0, 'right':1, 'no stim':2},
 	    "filename": "Visual_ID.txt",
+            "dtype": "int"
+        },
+    "visual_stim_oreintation": {
+            "description": "Orientation of gabor patch",
+            "map": {'horizontal':0, 'vertical':1},
+ 	    "filename": "Visual_Stim_Orientation.txt",
+            "dtype": "int"
+        },
+	"visual_stim_difficulty": {
+            "description": "Delta degrees clockwise or counterclockwise from 45 degrees of drifting grating",
+            "map": {'45':0, '36': 1, '27':2, '18':3, '9':4},
+	    "filename": "Visual_Stim_Difficulty.txt",
             "dtype": "int"
         },
 	"outcome": {
@@ -154,16 +189,6 @@ schema = \
             "filename": "Trial_End.txt",
             "dtype": "float",
 	    "unit": "s"
-        },
+        }
     }
 }
-
-
-# --- To fix: ---
-'''
-	"visual_stim_difficulty": {
-            "description": "TBD",
-	    "filename": "Visual_Stimulus.txt",
-            "dtype": "str"
-        },
-'''
