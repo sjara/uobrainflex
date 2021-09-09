@@ -32,7 +32,7 @@ def format_choice_behavior_hmm(trial_data, trial_labels):
     
     # remove no response trials
     response_trials = trial_data.drop(index = trial_data.index[trial_data['outcome']==miss_ind].tolist())
-    
+    response_inds = response_trials.index#get indices of kept trial data    
     trial_start = response_trials['start_time'].values
     # create target port ind where left = -1 and right = 1
     target_port = response_trials['target_port']
@@ -66,7 +66,7 @@ def format_choice_behavior_hmm(trial_data, trial_labels):
     # create list of choices with [stimulus information, bias constant]
     inpts = [ np.vstack((stim,np.ones(len(stim)))).T ]
     
-    return inpts, true_choice, trial_start
+    return inpts, true_choice, trial_start, response_inds
 
 ## test
 ## inpts, true_choice = format_behavior_hmm(trial_data)
