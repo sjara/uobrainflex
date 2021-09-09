@@ -27,7 +27,8 @@ def generate_suggestion(performance):
     elif performance['stage'][1] == '2':
         if all([performance['hits_total']>200,performance['hits_left_ratio']<.66, performance['hits_left_ratio']>.33]):
             next_session = 'S3'
-        elif all([performance['licks_total']>1000, performance['licks_left_ratio']>.3, performance['licks_left_ratio']<.7]):
+        elif any([all([performance['licks_total']>1000, performance['licks_left_ratio']>.3, performance['licks_left_ratio']<.7]),
+                 all([performance['hits_total']*performance['hits_left_ratio']>25, performance['hits_total']*(1-performance['hits_left_ratio'])>25])]):
             next_session = 'S2'
         else:
             next_session = 'S1'
@@ -37,7 +38,8 @@ def generate_suggestion(performance):
             next_session = 'S4'
         elif all([performance['hits_total']>100, performance['hits_left_ratio']<.66, performance['hits_left_ratio']>.33]):
             next_session = 'S3'
-        elif all([performance['licks_total']>1000, performance['licks_left_ratio']>.3, performance['licks_left_ratio']<.7]):
+        elif any([all([performance['licks_total']>1000, performance['licks_left_ratio']>.3, performance['licks_left_ratio']<.7]),
+                 all([performance['hits_total']*performance['hits_left_ratio']>25, performance['hits_total']*(1-performance['hits_left_ratio'])>25])]):
             next_session = 'S2'
         else:
             next_session = 'S1'
@@ -50,7 +52,8 @@ def generate_suggestion(performance):
             next_session = 'S4'
         elif all([performance['hits_total']>100, performance['hits_left_ratio']<.66, performance['hits_left_ratio']>.33]):
             next_session = 'S3'
-        elif all([performance['licks_total']>1000, performance['licks_left_ratio']>.3, performance['licks_left_ratio']<.7]):
+        elif any([all([performance['licks_total']>1000, performance['licks_left_ratio']>.3, performance['licks_left_ratio']<.7]),
+                 all([performance['hits_total']*performance['hits_left_ratio']>25, performance['hits_total']*(1-performance['hits_left_ratio'])>25])]):
             next_session = 'S2'
         else:
             next_session = 'S1'
@@ -96,6 +99,7 @@ choices_left_ratio =  last_session['choices_left_stim_ratio']
 choice_right_stim = choices_total*(1-choices_left_ratio)
 choice_left_stim = choices_total*choices_left_ratio
 
+
 performance={}
 performance['stage'] = last_session['behavior_training_stage']
 performance['licks_total'] = last_session['licks_total']
@@ -118,8 +122,8 @@ if all([last_2session['behavior_training_stage'][0] == last_2session['behavior_t
     hits_left_ratio  = last_2session['hits_left_ratio'][0] 
     hit_rate_right = last_2session['hit_rate_right'][0]
     hit_rate_left  = last_2session['hit_rate_left'][0]
-    choices_total_2 =  last_session['choices_total']
-    choices_left_ratio_2 =  last_session['choices_left_stim_ratio']
+    choices_total_2 =  last_2session['choices_total'][0]
+    choices_left_ratio_2 =  last_2session['choices_left_stim_ratio'][0]
     choice_right_stim_2 = choices_total_2*(1-choices_left_ratio_2)
     choice_left_stim_2 = choices_total_2*choices_left_ratio_2
     

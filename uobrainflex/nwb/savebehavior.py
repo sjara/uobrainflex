@@ -129,7 +129,7 @@ def to_nwb(inputDir, outputDir, schema=None, outputFilename=None, verbose=True):
     extensionDir = os.path.dirname(__file__)
     pynwb.load_namespaces(os.path.join(extensionDir,EXTENSION_FILE))
     LabMetaData_ext = pynwb.get_class('LabMetaData_ext', 'uobrainflex_metadata')
-
+     
     # -- Initialize NWB file --
     nwbFile = pynwb.NWBFile(session_description = sessionDescription,  # required
                             identifier = uniqueID,                     # required
@@ -142,7 +142,10 @@ def to_nwb(inputDir, outputDir, schema=None, outputFilename=None, verbose=True):
     # -- Lab metadata --
     metadata = {}
     for entryName, entryInfo in schema['metadata'].items():
-        metadata[entryName] = read_txt_data(inputDir, entryInfo['filename'], 'one_string')
+        metadata[entryName] = read_txt_data(inputDir, entryInfo['filename'], 'one_string')    
+    missing_fields = set(LabMetaData_ext.__nwbfields__).symmetric_difference(set(metadata))
+    for entryName in missing_fields:
+        metadata[entryName] = ''
     sessionMetadata = LabMetaData_ext(name='metadata', **metadata)
     nwbFile.add_lab_meta_data(sessionMetadata)
 

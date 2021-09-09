@@ -12,6 +12,12 @@ groups:
   - name: training_stage
     dtype: text
     doc: Stage of behavioral training.
+  - name: auditory_stim_association
+    dtype: text
+    doc: Descriptor of auditory stimulus-lick port association.
+  - name: visual_stim_association
+    dtype: text
+    doc: Descriptor of auditory stimulus-lick port association.
   - name: behavior_version
     dtype: text
     doc: Version of schema used to translate LabView data to NWB.

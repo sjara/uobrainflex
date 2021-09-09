@@ -33,6 +33,26 @@ def get_file_path(subject, fileID):
         nwbfilepath=nwbfilepath[0]
     return nwbfilepath
 
+def get_recent_sessions(subject,num_sessions):
+    """
+    Returns specified number of most recent session filepaths uploaded as nwb files
+
+    Args:
+        subject (string): name of subject
+        num_sessions (int): number of session filepaths to return
+    Returns:
+        session_paths(list): list of strings of most recent behavioral sessions
+    """
+    
+    dataDir = config['BEHAVIOR']['cloud_storage_path']
+    subject_dir = dataDir + '\\' + subject
+    nwbfiles = glob.glob(os.path.join(subject_dir,'*.nwb'))
+    
+    if len(nwbfiles)>num_sessions:
+        nwbfiles = nwbfiles[len(nwbfiles)-num_sessions:]
+    
+    return nwbfiles
+
 # def load_nwb_file(nwbfilepath):
 #     ioObj = pynwb.NWBHDF5IO(nwbfilepath, 'r', load_namespaces=True)
 #     nwbFileObj = ioObj.read()
