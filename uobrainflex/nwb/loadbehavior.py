@@ -96,7 +96,8 @@ def read_behavior_measures(nwbFileObj, speriod=0.001, measures=[]):
     """
 
     if not measures:
-        measures = behavior_measures_keylist
+        keys = nwbFileObj.acquisition.keys()
+        measures = list(set(keys).symmetric_difference(set(behavior_events_keylist)))        
     
     # calculate number of periods to index with based on sample rate and length of longest measures data set
     max_time=np.full(len(measures),np.NaN)

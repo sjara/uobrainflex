@@ -14,9 +14,12 @@ import numpy as np
 import pandas as pd
 
 #identify subject and find files in date rate
-subject='BW016'
+# subject='BW016'
+# sessions=[]
+# for fileID in range(20210421,20210428):
+subject='BW031'
 sessions=[]
-for fileID in range(20210421,20210428):
+for fileID in range(20210807,20210813):
     this_session = load.get_file_path(subject,str(fileID))
     if this_session:
         sessions.append(this_session)

@@ -91,7 +91,6 @@ if mouse_sessions.empty:
         raise ValueError('You need to indicate a valid subject.')
 
 last_session = mouse_sessions.iloc[-1,:]
-last_2session = mouse_sessions.iloc[len(mouse_sessions)-2:]
 
 
 choices_total =  last_session['choices_total']
@@ -113,29 +112,31 @@ next_session = generate_suggestion(performance)
 print('\nBased on the most recent session in DataJoint, ' + subject + ' should run on ' + next_session + ' next session.\n')    
 
 
-# if the last two sessions occured on the same day and have the same stage, then combine them for a second suggestion
-if all([last_2session['behavior_training_stage'][0] == last_2session['behavior_training_stage'][1],
-        last_2session['behavior_filename'][0][0:23] == last_2session['behavior_filename'][1][0:23]]): 
-    licks_total = last_2session['licks_total'][0]
-    hits_total = last_2session['hits_total'][0]
-    licks_left_ratio = last_2session['licks_left_ratio'][0]
-    hits_left_ratio  = last_2session['hits_left_ratio'][0] 
-    hit_rate_right = last_2session['hit_rate_right'][0]
-    hit_rate_left  = last_2session['hit_rate_left'][0]
-    choices_total_2 =  last_2session['choices_total'][0]
-    choices_left_ratio_2 =  last_2session['choices_left_stim_ratio'][0]
-    choice_right_stim_2 = choices_total_2*(1-choices_left_ratio_2)
-    choice_left_stim_2 = choices_total_2*choices_left_ratio_2
-    
-    performance['hit_rate_right'] = performance['hit_rate_right']*(choice_right_stim/(choice_right_stim+choice_right_stim_2)) + hit_rate_right*(choice_right_stim_2/(choice_right_stim+choice_right_stim_2))
-    performance['hit_rate_left'] = performance['hit_rate_left']*(choice_left_stim/(choice_left_stim+choice_left_stim_2)) + hit_rate_left*(choice_left_stim_2/(choice_left_stim+choice_left_stim_2)) 
-    performance['licks_left_ratio'] = performance['licks_left_ratio']*(performance['licks_total']/(licks_total + performance['licks_total'])) + licks_left_ratio*(licks_total/(performance['licks_total'] + licks_total))
-    performance['licks_total'] = performance['licks_total'] + licks_total
-    performance['hits_left_ratio'] = performance['hits_left_ratio']*(performance['hits_total']/(performance['hits_total'] + hits_total)) + hits_left_ratio*(hits_total/(performance['hits_total'] + hits_total))
-    performance['hits_total'] = performance['hits_total'] + hits_total
+if len(mouse_sessions)>1:
+    last_2session = mouse_sessions.iloc[len(mouse_sessions)-2:]
+    # if the last two sessions occured on the same day and have the same stage, then combine them for a second suggestion
+    if all([last_2session['behavior_training_stage'][0] == last_2session['behavior_training_stage'][1],
+            last_2session['behavior_filename'][0][0:23] == last_2session['behavior_filename'][1][0:23]]): 
+        licks_total = last_2session['licks_total'][0]
+        hits_total = last_2session['hits_total'][0]
+        licks_left_ratio = last_2session['licks_left_ratio'][0]
+        hits_left_ratio  = last_2session['hits_left_ratio'][0] 
+        hit_rate_right = last_2session['hit_rate_right'][0]
+        hit_rate_left  = last_2session['hit_rate_left'][0]
+        choices_total_2 =  last_2session['choices_total'][0]
+        choices_left_ratio_2 =  last_2session['choices_left_stim_ratio'][0]
+        choice_right_stim_2 = choices_total_2*(1-choices_left_ratio_2)
+        choice_left_stim_2 = choices_total_2*choices_left_ratio_2
         
-    next_session = generate_suggestion(performance)
-    print('Based on the last 2 sessons in DataJoint on stage ' + performance['stage'] + ' on the same day, ' + subject + ' should run on ' + next_session + ' next session.\n')       
+        performance['hit_rate_right'] = performance['hit_rate_right']*(choice_right_stim/(choice_right_stim+choice_right_stim_2)) + hit_rate_right*(choice_right_stim_2/(choice_right_stim+choice_right_stim_2))
+        performance['hit_rate_left'] = performance['hit_rate_left']*(choice_left_stim/(choice_left_stim+choice_left_stim_2)) + hit_rate_left*(choice_left_stim_2/(choice_left_stim+choice_left_stim_2)) 
+        performance['licks_left_ratio'] = performance['licks_left_ratio']*(performance['licks_total']/(licks_total + performance['licks_total'])) + licks_left_ratio*(licks_total/(performance['licks_total'] + licks_total))
+        performance['licks_total'] = performance['licks_total'] + licks_total
+        performance['hits_left_ratio'] = performance['hits_left_ratio']*(performance['hits_total']/(performance['hits_total'] + hits_total)) + hits_left_ratio*(hits_total/(performance['hits_total'] + hits_total))
+        performance['hits_total'] = performance['hits_total'] + hits_total
+            
+        next_session = generate_suggestion(performance)
+        print('Based on the last 2 sessons in DataJoint on stage ' + performance['stage'] + ' on the same day, ' + subject + ' should run on ' + next_session + ' next session.\n')       
 
 if plot_behavior:
 
