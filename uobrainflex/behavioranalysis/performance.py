@@ -128,3 +128,40 @@ def get_summary(nwbFileObj):
     performance_summary['stage'] = nwbFileObj.lab_meta_data['metadata'].training_stage
 
     return performance_summary
+
+def response_times(nwbFileObj):
+    trial_data, trial_dict = load.read_trial_data(nwbFileObj)
+    behavior_events, behavior_events_index = load.read_behavior_events(nwbFileObj,speriod=0.001,events=[])
+    
+    behavior_events['licks_left']
+    l_lick = behavior_events_index['licks_left']*0.001
+    r_lick = behavior_events_index['licks_right']*0.001
+    
+    licks = np.append(r_lick,l_lick)
+    licks.sort()
+
+    trial_data['stimulus_time']
+    
+    response_time=([])
+    for t in trial_data['stimulus_time']:
+        ind = np.where(licks - t > 0)[0]
+        if len(ind) >0:
+            rt = licks[ind[0]]-t
+            if rt < 2.5:
+                response_time = np.append(response_time,rt)
+            else:
+                response_time = np.append(response_time,np.nan)
+        else:
+            response_time = np.append(response_time, np.nan)
+    return response_time
+    
+# import pynwb
+# import matplotlib.pyplot as plt
+# nwbfilepath = load.get_file_path('BW016','20210421')
+# nwbfilepath = load.get_file_path('BW016','20210422')
+# nwbfilepath = load.get_file_path('BW016','20210408')
+# ioObj = pynwb.NWBHDF5IO(nwbfilepath, 'r', load_namespaces=True)
+# nwbFileObj = ioObj.read()  
+
+# response_time = response_times(nwbFileObj)
+# plt.hist(response_time,np.arange(0,2,.01))
