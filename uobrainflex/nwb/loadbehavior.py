@@ -53,10 +53,10 @@ def get_recent_sessions(subject,num_sessions):
     
     return nwbfiles
 
-# def load_nwb_file(nwbfilepath):
-#     ioObj = pynwb.NWBHDF5IO(nwbfilepath, 'r', load_namespaces=True)
-#     nwbFileObj = ioObj.read()
-#     return nwbFileObj
+def load_nwb_file(nwbfilepath):
+    ioObj = pynwb.NWBHDF5IO(nwbfilepath, 'r', load_namespaces=True)
+    nwbFileObj = ioObj.read()
+    return nwbFileObj
 
 def read_trial_data(nwbFileObj):
     """

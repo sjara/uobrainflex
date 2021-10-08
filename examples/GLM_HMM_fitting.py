@@ -14,12 +14,19 @@ import numpy as np
 #identify subject and find files in date range
 subject='BW016'; sessions=[]
 for fileID in range(20210421,20210428):
-# subject='BW039'; sessions=[]
-# for fileID in range(20210831,20210913):
     this_session = load.get_file_path(subject,str(fileID))
     if this_session:
         sessions.append(this_session)
-
+subject='BW041'; sessions=[]
+for fileID in range(20210922,20210926):
+    this_session = load.get_file_path(subject,str(fileID))
+    if this_session:
+        sessions.append(this_session)
+subject='BW045'; sessions=[]
+for fileID in range(20210915,20210926):
+    this_session = load.get_file_path(subject,str(fileID))
+    if this_session:
+        sessions.append(this_session)
 
 #load and format choice data for GLM-HMM
 inpts=list([])
@@ -27,12 +34,13 @@ true_choices=list([])
 sessions_trial_start =list([])
 for sess in sessions:
     trial_data, trial_labels = load.load_trial_data(sess)
-    these_inpts, these_true_choices, trial_start = flex_hmm.format_choice_behavior_hmm(trial_data, trial_labels)
+    these_inpts, these_true_choices, trial_start, _ = flex_hmm.format_choice_behavior_hmm(trial_data, trial_labels)
     inpts.extend(these_inpts)
     true_choices.extend([these_true_choices])
     sessions_trial_start.extend([trial_start])
 
 
+### State Selection
 #Create kfold cross-validation object which will split data for us
 num_sess = len(true_choices)
 from sklearn.model_selection import KFold
@@ -122,3 +130,4 @@ plt.xlabel("states")
 plt.xlim(0, max_states+1)
 plt.ylabel("Log Probability")
 plt.show()
+plt.title(subject + ' Model Fitting')
