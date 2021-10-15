@@ -31,7 +31,9 @@ def format_choice_behavior_hmm(trial_data, trial_labels):
     error = trial_labels['outcome']['miss']
     
     # remove no response trials
-    response_trials = trial_data.drop(index = trial_data.index[trial_data['outcome']==miss_ind].tolist())
+
+    target_trials = trial_data.iloc[np.where(trial_data['stimulus_type'] != trial_labels['stimulus_type']['distractor'])[0],:]   
+    response_trials = target_trials.drop(index = target_trials.index[target_trials['outcome']==trial_labels['outcome']['incorrect_reject']].tolist())   
     response_inds = response_trials.index #get indices of kept trial data
     trial_start = response_trials['start_time'].values
     # create target port ind where left = -1 and right = 1
@@ -41,10 +43,15 @@ def format_choice_behavior_hmm(trial_data, trial_labels):
     target_port = target_port.values
     
     # get coherences of toneclouds presented
-    TC_coherence = response_trials['auditory_stim_difficulty'].values
+    if trial_data['target_modality'][0] == trial_labels['target_modality']['auditory']:
+        difficulty = response_trials['auditory_stim_difficulty'].values
+        stim = target_port * difficulty
+    else:
+        difficulty = response_trials['visual_gabor_angle'].values
+        stim = (difficulty - 45)/45
+        
     
     # multiply coherence by stim id to get inpts variable. this should be shifted to match coherence calculation in the future
-    stim = target_port * TC_coherence
     
     # create true_choice array. This should be created during labview data collection in the future
     true_choice = np.full([len(response_trials),1],np.int(0)) 

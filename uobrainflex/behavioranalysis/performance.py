@@ -92,7 +92,58 @@ def hit_analysis(trial_data, trial_dict):
         
     return hits_total, hit_rate, hits_left_ratio, hit_rate_left, hit_rate_right
 
-
+def psycho_performance(trial_data, trial_dict,target_modality):
+    # target_modality = nwbFileObj.lab_meta_data['metadata'].session_type
+    # trial_data, trial_dict = load.read_trial_data(nwbFileObj)
+    
+    target_hit_rate=[]
+    target_response_rate=[]
+    if target_modality == 'visual':
+        if  'visual_gabor_angle' in trial_data.columns:
+            target_column = 'visual_gabor_angle'
+            targets = np.unique(trial_data[target_column].dropna())
+            for stim in targets:
+                stim_ind = np.where(trial_data[target_column]==stim)[0]
+                stim_trials = trial_data.iloc[stim_ind]
+                response_trials = stim_trials.drop(stim_trials.iloc[np.where(stim_trials['outcome'] == trial_dict['outcome']['incorrect_reject'])[0]].index)
+                hit_trials = np.where(response_trials['outcome'] == trial_dict['outcome']['hit'])[0]
+                target_hit_rate.append(len(hit_trials)/len(response_trials))
+                target_response_rate.append(len(response_trials)/len(stim_trials))
+        else:
+            target_column = 'visual_stim_difficulty'
+            target_data = trial_data
+            targets = np.unique(trial_data[target_column].dropna())
+            directions = np.unique(trial_data['target_port'])
+            for d in directions:
+                d_ind = np.where(trial_data['visual_stim_id']==d)[0]
+                d_trials = trial_data.iloc[d_ind]
+                for stim in targets:
+                    stim_ind = np.where(d_trials[target_column]==stim)[0]
+                    stim_trials = d_trials.iloc[stim_ind]
+                    response_trials = stim_trials.drop(stim_trials.iloc[np.where(stim_trials['outcome'] == trial_dict['outcome']['incorrect_reject'])[0]].index)
+                    hit_trials = np.where(response_trials['outcome'] == trial_dict['outcome']['hit'])[0]
+                    target_hit_rate.append(len(hit_trials)/len(response_trials))
+                    target_response_rate.append(len(response_trials)/len(stim_trials))
+                    targets = np.flip(targets)
+            targets = np.concatenate((np.flip(targets+1)*-1,targets+1))
+    elif target_modality == 'auditory':
+        target_column = 'auditory_stim_difficulty'
+        targets = np.unique(trial_data[target_column].dropna())
+        directions = np.unique(trial_data['target_port'])
+        for d in directions:
+            d_ind = np.where(trial_data['auditory_stim_id']==d)[0]
+            d_trials = trial_data.iloc[d_ind]
+            targets = np.flip(targets)
+            for stim in targets:
+                stim_ind = np.where(d_trials[target_column]==stim)[0]
+                stim_trials = d_trials.iloc[stim_ind]
+                response_trials = stim_trials.drop(stim_trials.iloc[np.where(stim_trials['outcome'] == trial_dict['outcome']['incorrect_reject'])[0]].index)
+                hit_trials = np.where(response_trials['outcome'] == trial_dict['outcome']['hit'])[0]
+                target_hit_rate.append(len(hit_trials)/len(response_trials))
+                target_response_rate.append(len(response_trials)/len(stim_trials))
+        targets = np.concatenate((np.flip(targets)*-1,targets))
+    return targets, target_hit_rate, target_response_rate
+            
 def get_summary(nwbFileObj):
     """
     Return performance metrics for a specified nwb file.

@@ -20,7 +20,7 @@ def generate_suggestion(performance):
         next_session (str): String of stage suggestion
     '''
     if performance['stage'][1] == '1':
-        if all([performance['licks_total']>1000, performance['licks_left_ratio']>.33, performance['licks_left_ratio']<.66]):
+        if all([performance['hits_total']>200,performance['hits_left_ratio']<.66, performance['hits_left_ratio']>.33]):
             next_session = 'S2'
         else:
             next_session = 'S1'
