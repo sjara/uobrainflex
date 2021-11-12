@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+
 def format_choice_behavior_hmm(trial_data, trial_labels, drop_no_response=True, drop_distractor_trials=True):
     """
     Parameters
@@ -126,7 +127,7 @@ def format_choice_behavior_hmm(trial_data, trial_labels, drop_no_response=True, 
     return inpts, true_choice, trials
 
 
-def compile_choice_hmm_data(sessions,get_behavior_measures = False):
+def compile_choice_hmm_data(sessions, get_behavior_measures=False, verbose=True):
     """
 
     Parameters
@@ -149,6 +150,8 @@ def compile_choice_hmm_data(sessions,get_behavior_measures = False):
     hmm_trials =list([])
     #loop through sessions to load and format data
     for sess in sessions:
+        if verbose:
+            print(f'Loading {sess}')
         nwbFileObj = load.load_nwb_file(sess)
         trial_data, trial_labels = load.read_trial_data(nwbFileObj)
         if get_behavior_measures:
@@ -161,7 +164,8 @@ def compile_choice_hmm_data(sessions,get_behavior_measures = False):
         
     return inpts, true_choices, hmm_trials
 
-def choice_hmm_sate_fit(subject, inpts, true_choices, max_states = 4,save_folder=''):
+
+def choice_hmm_sate_fit(subject, inpts, true_choices, max_states=4, save_folder=''):
     # inpts, true_choices = compile_choice_hmm_data(sessions)
     ### State Selection
     #Create kfold cross-validation object which will split data for us
@@ -267,6 +271,7 @@ def choice_hmm_sate_fit(subject, inpts, true_choices, max_states = 4,save_folder
     num_states = np.where(avg_ll == avg_ll.max())[0][0]+1
     return num_states
 
+
 def choice_hmm_fit(subject, num_states, inpts, true_choices, hmm_trials):
     ## Fit GLM-HMM with MAP estimation:
     # Set the parameters of the GLM-HMM
@@ -305,6 +310,7 @@ def choice_hmm_fit(subject, num_states, inpts, true_choices, hmm_trials):
 
     hmm = map_glmhmm
     return hmm, hmm_trials
+
 
 def plot_GLM_weights(subject, hmm,save_folder=''):
     ## plot results
@@ -348,7 +354,8 @@ def plot_session_posterior_probs(subject, hmm,true_choices,inpts, save_folder=''
         if save_folder!='':
             plt.savefig(save_folder + subject + f" Pstate_session{sess_id}.png")
         plt.show()
-        
+
+
 def plot_transition_matrix(subject, hmm, save_folder=''):
     # plot state transition matrix
     num_states =len(hmm.observations.params)
@@ -368,7 +375,8 @@ def plot_transition_matrix(subject, hmm, save_folder=''):
     plt.title("transition matrix", fontsize = 20)
     if save_folder!='':
         plt.savefig(save_folder + subject +" transition_matrix.png")
-    
+
+
 def plot_state_occupancy(subject, hmm,true_choices,inpts, save_folder=''):
     # concatenate posterior probabilities across sessions
     cols = ['#ff7f00', '#4daf4a', '#377eb8','m','r']
@@ -394,8 +402,8 @@ def plot_state_occupancy(subject, hmm,true_choices,inpts, save_folder=''):
     plt.title(subject + ' State Occupancy', fontsize=15)
     if save_folder !='':
         plt.savefig(save_folder + subject + "_state_occupancy.png")
-    
-    
+
+
 def plot_state_posteriors_CDF(subject, hmm, inpts, true_choices, save_folder=''):
     cols = ['#ff7f00', '#4daf4a', '#377eb8','m','r']
     posterior_probs = [hmm.expected_states(data=data, input=inpt)[0]
@@ -421,8 +429,8 @@ def plot_state_posteriors_CDF(subject, hmm, inpts, true_choices, save_folder='')
     plt.title(subject + '\nMax State Posterior Values', fontsize = 20)
     if save_folder !='':
         plt.savefig(save_folder +  subject + "_max_state_Posterior_value.png")   
-    
-    
+
+
 def plot_state_psychometrics(subject, hmm, inpts,true_choices,save_folder=''):
     #generate psychometrics per state
     #concatenate inpts and choices
