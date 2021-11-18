@@ -13,7 +13,6 @@ from uobrainflex.pipeline import acquisition as acquisitionSchema
 from uobrainflex.pipeline import experimenter as experimenterSchema
 from uobrainflex.nwb import loadbehavior as load
 from uobrainflex.behavioranalysis import flex_hmm
-import numpy as np
 
 # specify existing directory to save summary figures to. 
 save_folder = '' # if save_folder == '', plots will be generated but not saved
@@ -53,11 +52,12 @@ posterior_probs, hmm_trials = flex_hmm.get_posterior_probs(hmm, true_choices, in
 ## plot results
 flex_hmm.plot_GLM_weights(subject, hmm, save_folder)
 flex_hmm.plot_state_occupancy(subject, hmm_trials, save_folder)
-_ = flex_hmm.plot_dwell_times(subject, hmm_trials, save_folder)
+dwell_times = flex_hmm.plot_dwell_times(subject, hmm_trials, save_folder)
 flex_hmm.plot_state_posteriors_CDF(subject, posterior_probs, save_folder)
 flex_hmm.plot_state_psychometrics(subject, hmm, inpts, true_choices, save_folder)
 flex_hmm.plot_transition_matrix(subject, hmm, save_folder)
 
 ## plot relation between beahvior measures and state
 flex_hmm.plot_session_summaries(subject, hmm_trials,nwbfilepaths,save_folder)
+flex_hmm.plot_session_summaries_patch(subject, hmm_trials,dwell_times,nwbfilepaths,save_folder)
 flex_hmm.plot_state_measure_histograms(subject, hmm_trials, save_folder)

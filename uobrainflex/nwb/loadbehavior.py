@@ -319,6 +319,10 @@ def fetch_trial_beh_measures(trial_data,behavior_measures):
     raw_run = behavior_measures['running_speed'].values
     filt_run = savitzky_golay(raw_run, 201, 2, deriv=0, rate=1)   
     
+    raw_whisk = behavior_measures['whisker_energy'].values
+    filt_whisk = savitzky_golay(raw_whisk, 501, 2, deriv=0, rate = 1)
+    norm_whisk = (filt_whisk-np.nanmin(filt_whisk))/(np.nanmax(filt_whisk)-np.nanmin(filt_whisk))
+    
     #loop through each trial
     for idx in trial_data.index:
         #get start sample
@@ -326,7 +330,36 @@ def fetch_trial_beh_measures(trial_data,behavior_measures):
         start_sample = round(trial_start/.001) ####danger! this assumes ms sampling of behavior measures
         #write behavior measures from start sample to trial_data
         trial_data.loc[idx,'pupil_size'] = norm_pup[start_sample]
-        trial_data.loc[idx,'whisk'] = behavior_measures.loc[start_sample]['whisker_energy']
+        trial_data.loc[idx,'whisk'] = norm_whisk[start_sample]
         trial_data.loc[idx,'run'] = filt_run[start_sample]
         
+    return trial_data
+
+def fetch_trial_beh_events(trial_data,behavior_events):
+    """
+    Fetches behavior measures at instant of stimulus presentation
+    
+    Args:
+        trial_data (dataframe): trial data loaded by load_trial_data function
+        behavior_events (dict): behavior measures loaded by load_behavior_measures function
+            assumes 0.001 sample period used for behavior measures
+    Returns:
+        trial_data (DataFrame): trial data apended with reaction times for each trial
+    """
+    # keys = behavior_events.keys()
+    licks = np.sort(np.concatenate([behavior_events['licks_left'],behavior_events['licks_right']]))
+    #loop through each trial
+    rt=[]
+    for idx in trial_data.index:
+        #get start sample
+        trial_start = trial_data.loc[idx,'stimulus_time']
+        trial_licks = licks - trial_start*1000
+        reaction_idx = np.where(trial_licks>0)[0]
+        if len(reaction_idx)>0:
+            rt.append(trial_licks[reaction_idx[0]])
+        else:
+            rt.append(np.nan)
+    rt = np.array(rt)
+    rt[np.where(rt>2250)[0]] = np.nan
+    trial_data['reaction_time'] = rt
     return trial_data

@@ -10,6 +10,7 @@ import ssm
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from matplotlib.patches import Rectangle
 
 
 def format_choice_behavior_hmm(trial_data, trial_labels, drop_no_response=False, drop_distractor_trials=True):
@@ -144,7 +145,9 @@ def compile_choice_hmm_data(sessions, get_behavior_measures=False, verbose=True)
         trial_data, trial_labels = load.read_trial_data(nwbFileObj)
         if get_behavior_measures:
             behavior_measures = load.read_behavior_measures(nwbFileObj)
+            _ ,behavior_events = load.read_behavior_events(nwbFileObj)
             trial_data = load.fetch_trial_beh_measures(trial_data, behavior_measures)
+            trial_data = load.fetch_trial_beh_events(trial_data, behavior_events)
         these_inpts, these_true_choices, trials = format_choice_behavior_hmm(trial_data, trial_labels)
         inpts.extend(these_inpts)
         true_choices.extend([these_true_choices])
@@ -672,9 +675,18 @@ def plot_session_summaries(subject, hmm_trials,nwbfilepaths,save_folder =''):
         if any(columns=='state_4_prob'):
             plt.plot(these_trials['state_4_prob'].values,cols[3],linewidth=3)
             lg.append('state 4')
-        plt.scatter(range(len(these_trials)),these_trials['pupil_size'],color='k')
-        plt.scatter(range(len(these_trials)),these_trials['run']+.1,color='k',marker = ">")
-        plt.scatter(range(len(these_trials)),these_trials['whisk'],color='k',marker = "s")
+        pupil = these_trials['pupil_size']
+        pupil = pupil/2+.5
+        plt.scatter(range(len(these_trials)),pupil,color='k')
+        run = these_trials['run']
+        run = run/max(run)/6+.33
+        plt.scatter(range(len(these_trials)),run,color='k',marker = ">")
+        whisk = these_trials['whisk']
+        whisk = whisk/max(whisk)/6+.16
+        plt.scatter(range(len(these_trials)),whisk,color='k',marker = "s")
+        rt = these_trials['reaction_time']
+        rt = rt/max(rt)/6
+        plt.scatter(range(len(these_trials)),rt,color='k',marker = "*")
         for measure in ['pupil','wheel','whisk']:
             lg.append(measure)
         plt.legend(lg)
@@ -682,7 +694,44 @@ def plot_session_summaries(subject, hmm_trials,nwbfilepaths,save_folder =''):
         plt.title(nwbfilepaths[session],fontsize=17)
         if save_folder != '':
             plt.savefig(save_folder +  subject + "_session_" + str(session) + "_summary.png")   
- 
+
+
+def plot_session_summaries_patch(subject, hmm_trials,dwell_times,nwbfilepaths,save_folder =''):
+    cols = ['#ff7f00', '#4daf4a', '#377eb8', 'm','r']
+
+    for session, these_trials in enumerate(hmm_trials):
+        hand=[]
+        lg=[]
+        dwells = dwell_times[session]
+        fig = plt.figure(figsize=(25, 12), facecolor='w', edgecolor='k')
+        ax = fig.add_axes([0.1, .1, 0.8, .8])
+
+        for idx in dwells.index: 
+            ax.add_patch(Rectangle((dwells.loc[idx,'first_trial']-.4,0), dwells.loc[idx,'dwell']-1.1, 1,color=cols[int(dwells.loc[idx,'state'])],alpha=.2))
+        for idx in range(0,int(max(dwells['state']))+1):
+            hand.append(ax.add_patch(Rectangle((0,0),0,0,color=cols[idx],alpha=.2)))
+            lg.append('state ' + str(idx+1))
+        pupil = these_trials['pupil_size']
+        pupil = pupil/2+.5
+        hand.append(plt.scatter(range(len(these_trials)),pupil,color='k'))
+        run = these_trials['run']
+        run = run/max(run)/6+.33
+        hand.append(plt.scatter(range(len(these_trials)),run,color='k',marker = ">"))
+        whisk = these_trials['whisk']
+        whisk = whisk/max(whisk)/6+.16
+        hand.append(plt.scatter(range(len(these_trials)),whisk,color='k',marker = "s"))
+        rt = these_trials['reaction_time']
+        rt = rt/max(rt)/6
+        hand.append(plt.scatter(range(len(these_trials)),rt,color='k',marker = "*"))
+        for measure in ['pupil','wheel','whisk']:
+            lg.append(measure)
+        plt.legend(hand,lg)
+        plt.xlabel('Trial',fontsize = 30)
+        plt.title(nwbfilepaths[session],fontsize=17)
+        if save_folder != '':
+            plt.savefig(save_folder +  subject + "_session_" + str(session) + "_summary.png")   
+            
+            
 def plot_state_measure_histograms(subject, hmm_trials, save_folder = ''):
     all_pupil = np.empty(0)
     all_run = np.empty(0)
