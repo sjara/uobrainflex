@@ -155,8 +155,234 @@ def compile_choice_hmm_data(sessions, get_behavior_measures=False, verbose=True)
         
     return inpts, true_choices, hmm_trials
 
+def sampleSizeEstimation(subject, num_sess, inpts, true_choices, stim_vals, obs_dim, num_categories, input_dim):
+    
+    max_states = 4
+    nKfold = 5
+    N_iters = 1000
+#    num_states_cv = choice_hmm_state_fit(subject, inpts, true_choices, max_states, plot=False,
+#                                            obs_dim=obs_dim, num_categories=num_categories, input_dim=input_dim)
+#    
+    map_results, mle_results, models = modelSelectionCV(inpts, true_choices, max_states, nKfold, 
+                                                        num_categories, obs_dim, input_dim, 
+                                                        N_iters=N_iters, TOL=10**-6, min_states=1)
+    best_map=np.mean(map_results[1],1).argmax()
+    num_states_map=best_map+1 
+    # note: EM algorithm is not convex ie you find a different result every time you run it
+    # To deal with this issue, we will run EM 5 times on all the data but with random initial conditions and pick the best run 
+    # pick the state with the best MAP likelihood and retrain the model on the whole dataset      
+    #Create HMM object to fit: MAP
+    # Instantiate GLM-HMM and set prior hyperparameters
+    prior_sigma = 2
+    prior_alpha = 2
+    map_glmhmm = ssm.HMM(num_states_map, obs_dim, input_dim, observations="input_driven_obs", 
+                   observation_kwargs=dict(C=num_categories,prior_sigma=prior_sigma),
+                 transitions="sticky", transition_kwargs=dict(alpha=prior_alpha,kappa=0))
+    # fit on whole data
+    Nruns=5
+    ll_runs=np.zeros((Nruns))
+    hmm_runs=[]
+    nData = len(inpts)
+    for iRun in range(Nruns):
+        map_glmhmm = ssm.HMM(num_states_map, obs_dim, input_dim, observations="input_driven_obs", 
+                   observation_kwargs=dict(C=num_categories,prior_sigma=prior_sigma),
+                 transitions="sticky", transition_kwargs=dict(alpha=prior_alpha,kappa=0))
+        hmm_lls = map_glmhmm.fit(true_choices, inputs=inpts, method="em", num_iters=N_iters, tolerance=10**-6)                
+        hmm_runs.append(map_glmhmm)
+        ll_runs[iRun] = map_glmhmm.log_probability(true_choices, inputs=inpts)/nData
+        
+    best_run=ll_runs.argmax()
+    hmm_bestfit=hmm_runs[best_run]
 
-def choice_hmm_sate_fit(subject, inpts, true_choices, max_states=4, save_folder=''):
+    num_trials_per_sess = 400#how many trials per simulated session
+    true_inpts, true_latents, true_choices = simulateData(hmm_bestfit, num_sess, num_trials_per_sess, stim_vals, input_dim, plot=False)
+    
+    data_sim = [inpts, true_latents, true_choices]
+    num_sess_min = 1
+    num_sess_max = num_sess
+    sess_to_recov = sessionsToRecover(data_sim, num_states_map, obs_dim, num_categories, input_dim, num_sess_min, num_sess_max)
+    return sess_to_recov
+
+def sessionsToRecover(data_sim, num_states, obs_dim, num_categories, input_dim, num_sess_min, num_sess_max):
+    num_states_true = num_states
+    nKfold = 5
+    first = True#keep track of when first time we recover back the ground truth number of states
+    sess_to_recov = 0
+    for num_sess in range(num_sess_min, num_sess_max):
+        inpts_ = data_sim[0][:num_sess]
+        true_latents_ = data_sim[1][:num_sess]
+        true_choices_ = data_sim[2][:num_sess]
+        ##===== K-fold Cross-Validation =====##
+        map_results, mle_results, models = modelSelectionCV(inpts, true_choices, max_states, nKfold, 
+                                                            num_categories, obs_dim, input_dim, N_iters=1000, TOL=10**-6, min_states=1)
+        best_map=np.mean(map_results[1],1).argmax()
+        num_states_map=best_map+1 
+        if (num_states_map == num_states_true) and first:
+            sess_to_recov = num_sess
+            first = False
+            return sess_to_recov
+        #best_mle=np.mean(testing_results_mle,1).argmax()
+        #num_states_mle=best_mle+1
+        
+    return sess_to_recov
+
+def simulateData(true_glmhmm, num_sess, num_trials_per_sess, stim_vals, input_dim, plot=True):
+    """
+    Simulate an example set of external inputs for each trial in a session.
+    Parameters
+    ----------
+    true_glmhmm : HMM-GLM model object
+        GLM-HMM estimation object to be used to generate synthetic data.
+    num_trials_per_sess : scalar
+        number of trials in a session.
+    stim_vals : list
+        stimulus values to be used as input to model for synthetic data generation.
+        (e.g. stim_vals = [.98,.75,.62,-.62,-.75,-.98])
+    Returns
+    -------
+    inpts : HMM-GLM model object
+        input stimuli used by the model to generate the synthetic choice data
+    true_latents : HMM-GLM model object
+        latent states of the ground truth model
+    true_choices : HMM-GLM model object
+        output choices of the ground truth model, i.e. synthetic choice data
+    """
+    inpts = np.ones((num_sess, num_trials_per_sess, input_dim)) # initialize inpts array
+    inpts[:,:,0] = np.random.choice(stim_vals, (num_sess, num_trials_per_sess)) # generate random sequence of stimuli
+    inpts = list(inpts) #convert inpts to correct format
+    params = true_glmhmm.observations.params
+    num_states = params.shape[0]
+    # Generate a sequence of latents and choices for each session
+    true_latents, true_choices = [], []
+    for sess in range(num_sess):
+        true_z, true_y = true_glmhmm.sample(num_trials_per_sess, input=inpts[sess])
+        true_latents.append(true_z)
+        true_choices.append(true_y)
+    if plot == True:
+        title = str(num_sess) + ' sessions'
+        plotModelBehav(true_glmhmm, inpts, true_choices, stim_vals, title, num_states, occ_thresh=0.8)
+    return inpts, true_latents, true_choices
+
+def modelSelectionCV(inpts, true_choices, max_states, nKfold, 
+                     num_categories, obs_dim, input_dim, N_iters=1000, TOL=10**-6, min_states=1):
+    """
+    Perform K Fold cross validation for model selection.
+    Parameters
+    ----------
+    inpts : HMM-GLM model object
+        input stimuli used by the model to generate the synthetic choice data
+    true_choices : HMM-GLM model object
+        output choices of the ground truth model, i.e. synthetic choice data
+    max_states : scalar
+        maximum number of states for which to perform model selection.
+    nKfold : scalar
+        number of cross validation folds
+    obs_dim : scalar
+        number of observed dimensions.
+    input_dim : scalar
+        number of input data dimensions
+    N_iters : scalar
+        maximum number of EM iterations. Fitting with stop earlier 
+        if increase in LL is below tolerance specified by tolerance parameter. Default 1000.
+    TOL : scalar
+        tolerance parameter (see N_iters). Default 10**-6.
+    min_states : scalar
+        minimum number of states for which to perform model selection. Default 1.
+    Returns
+    -------
+    (ll_training_map, ll_heldout_map) : tuple of np.ndarray's
+        tuple containing results for model selection using MAP. 
+        The first entry is the model log likelihood for the tested number of states
+        on the training data set. The second entry is the mode log likelihood on 
+        the test set.
+    (ll_training_mle, ll_heldout_mle) : tuple of np.ndarray's
+        tuple containing results for model selection using MLE. 
+        The first entry is the model log likelihood for the tested number of states
+        on the training data set. The second entry is the mode log likelihood on 
+        the test set.
+    """
+    from sklearn.model_selection import KFold
+    kf = KFold(n_splits=nKfold, shuffle=True, random_state=None)
+    #synthetic data: list of length num folds, elements are trial num x obs_dim (1)
+    syn_dat_temp = np.vstack(true_choices)
+    size = int(syn_dat_temp.shape[0]/nKfold)
+    syn_dat_temp = np.split(syn_dat_temp, np.arange(size,syn_dat_temp.shape[0],size))
+    if syn_dat_temp[-1].shape[0] != syn_dat_temp[0].shape[0]:
+        syn_dat_temp.pop()
+    synthetic_data = syn_dat_temp
+    #synthetic_data = [syn_dat_temp[j] for j in range(syn_dat_temp.shape[0])]
+    #synthetic inpts: list of length num folds, elements are trial num x input_dim (2)
+    #syn_inpt_temp = np.vstack(inpts).reshape((nKfold, -1, input_dim))
+    syn_inpt_temp = np.vstack(inpts)
+    size = int(syn_inpt_temp.shape[0]/nKfold)
+    syn_inpt_temp = np.split(syn_inpt_temp, np.arange(size,syn_inpt_temp.shape[0],size))
+    if syn_inpt_temp[-1].shape[0] != syn_inpt_temp[0].shape[0]:
+        syn_inpt_temp.pop()
+    synthetic_inpts = syn_inpt_temp
+    #synthetic_inpts = [syn_inpt_temp[j] for j in range(syn_inpt_temp.shape[0])]
+    #Just for sanity's sake, let's check how it splits the data
+    #So 5-fold cross-validation uses 80% of the data to train the model, and holds 20% for testing
+#     for ii, (train_index, test_index) in enumerate(kf.split(synthetic_data)):
+#         print(f"kfold {ii} TRAIN:", len(train_index), "TEST:", len(test_index))
+
+    # initialized training and test loglik for model selection, and BIC
+    ll_training_mle = np.zeros((max_states,nKfold))
+    ll_heldout_mle = np.zeros((max_states,nKfold))
+    ll_training_map = np.zeros((max_states,nKfold))
+    ll_heldout_map = np.zeros((max_states,nKfold))
+    # BIC = np.zeros((max_states))
+    #storage for model parameters
+    mle_mods = {'GLM_weights':[], 'HMM_probs':[], 'inpts':[], 'true_choices':[]}
+    map_mods = {'GLM_weights':[], 'HMM_probs':[], 'inpts':[], 'true_choices':[]}
+
+    #Outer loop over the parameter for which you're doing model selection for
+    for iS, num_states in enumerate(range(1,max_states+1)):
+        #Inner loop over kfolds
+        for iK, (train_index, test_index) in enumerate(kf.split(synthetic_data)):
+            nTrain = len(train_index); nTest = len(test_index)#*obs_dim
+
+            #training data: list of length training folds (4), elements are trial num x obs_dim (1)
+            #training inpts: list of length training folds (4), elements are trial num x input_dim (2)
+            # split choice data and inputs
+            training_data = [synthetic_data[i] for i in train_index]
+            test_data = [synthetic_data[i] for i in test_index]
+            training_inpts=[synthetic_inpts[i] for i in train_index]
+            test_inpts=[synthetic_inpts[i] for i in test_index]
+            #Create HMM object to fit: MLE
+            #print(num_states)
+            xval_glmhmm = ssm.HMM(num_states, obs_dim, input_dim, observations="input_driven_obs", 
+                               observation_kwargs=dict(C=num_categories), transitions="standard")
+            #fit on training data
+            hmm_lls = xval_glmhmm.fit(training_data, inputs=training_inpts, verbose=1, method="em", num_iters=N_iters, tolerance=TOL)                
+            #Compute log-likelihood for each dataset
+            ll_training_mle[iS,iK] = xval_glmhmm.log_probability(training_data, inputs=training_inpts)/nTrain
+            ll_heldout_mle[iS,iK] = xval_glmhmm.log_probability(test_data, inputs=test_inpts)/nTest
+
+            #Create HMM object to fit: MAP
+            # Instantiate GLM-HMM and set prior hyperparameters
+            prior_sigma = 2
+            prior_alpha = 2
+            map_glmhmm = ssm.HMM(num_states, obs_dim, input_dim, observations="input_driven_obs", 
+                           observation_kwargs=dict(C=num_categories,prior_sigma=prior_sigma),
+                         transitions="sticky", transition_kwargs=dict(alpha=prior_alpha,kappa=0))
+            #fit on training data
+            hmm_lls = map_glmhmm.fit(training_data, inputs=training_inpts, verbose=1, method="em", num_iters=N_iters, tolerance=TOL)                
+            #Compute log-likelihood for each dataset
+            ll_training_map[iS,iK] = map_glmhmm.log_probability(training_data, inputs=training_inpts)/nTrain
+            ll_heldout_map[iS,iK] = map_glmhmm.log_probability(test_data, inputs=test_inpts)/nTest
+
+            map_mods['GLM_weights'].append(map_glmhmm.observations.params)
+            map_mods['HMM_probs'].append(map_glmhmm.transitions.log_Ps)
+            map_mods['inpts'].append(test_inpts)
+            map_mods['true_choices'].append(test_data)
+            mle_mods['GLM_weights'].append(xval_glmhmm.observations.params)
+            mle_mods['HMM_probs'].append(xval_glmhmm.transitions.log_Ps)
+            mle_mods['inpts'].append(test_inpts)
+            mle_mods['true_choices'].append(test_data)
+            
+    return (ll_training_map, ll_heldout_map), (ll_training_mle, ll_heldout_mle), (map_mods, mle_mods)
+
+def choice_hmm_state_fit(subject, inpts, true_choices, max_states=4, plot=True, save_folder='', **kwargs):
     # inpts, true_choices = compile_choice_hmm_data(sessions)
     ### State Selection
     #Create kfold cross-validation object which will split data for us
@@ -181,9 +407,20 @@ def choice_hmm_sate_fit(subject, inpts, true_choices, max_states=4, save_folder=
     # BIC = np.zeros((max_states))
     
     # # Set the parameters of the GLM-HMM
-    obs_dim = 1           # number of observed dimensions
-    num_categories = 2    # number of categories for output
-    input_dim = 2         # input dimensions
+    if 'obs_dim' in kwargs.keys():
+        obs_dim = kwargs['obs_dim']
+    else:
+        obs_dim = 1           # number of observed dimensions
+    
+    if 'num_categories' in kwargs.keys():
+        num_categories = kwargs['num_categories']
+    else:
+        num_categories = 2    # number of categories for output
+    
+    if 'input_dim' in kwargs.keys():
+        input_dim = kwargs['input_dim']
+    else:
+        input_dim = 2         # input dimensions
     
     #Outer loop over the parameter for which you're doing model selection for
     for iS, num_states in enumerate(range(1,max_states+1)):
@@ -222,29 +459,29 @@ def choice_hmm_sate_fit(subject, inpts, true_choices, max_states=4, save_folder=
             ll_training_map[iS,iK] = map_glmhmm.log_probability(training_data, inputs=training_inpts)/nTrain
             ll_heldout_map[iS,iK] = map_glmhmm.log_probability(test_data, inputs=test_inpts)/nTest
             
-    
-    #plot ll calculations
-    cols = ['#ff7f00', '#4daf4a', '#377eb8', '#7E37B8']
-    fig = plt.figure(figsize=(4, 3), dpi=80, facecolor='w', edgecolor='k')
-    for iS, num_states in enumerate(range(1,max_states+1)):
-        plt.plot((iS+1)*np.ones(nKfold),ll_training[iS,:], color=cols[0], marker='o',lw=0)
-        plt.plot((iS+1)*np.ones(nKfold),ll_heldout[iS,:], color=cols[1], marker='o',lw=0)
-        plt.plot((iS+1)*np.ones(nKfold),ll_training_map[iS,:], color=cols[2], marker='o',lw=0)
-        plt.plot((iS+1)*np.ones(nKfold),ll_heldout_map[iS,:], color=cols[3], marker='o',lw=0)
-    
-    plt.plot(range(1,max_states+1),np.mean(ll_training,1), label="training_MLE", color=cols[0])
-    plt.plot(range(1,max_states+1),np.mean(ll_heldout,1), label="test_MLE", color=cols[1])
-    plt.plot(range(1,max_states+1),np.mean(ll_training_map,1), label="training_MAP", color=cols[2])
-    plt.plot(range(1,max_states+1),np.mean(ll_heldout_map,1), label="test_MAP", color=cols[3])
-    # plt.plot([0, len(fit_ll)], true_ll * np.ones(2), ':k', label="True")
-    plt.legend(loc="lower right")
-    plt.xlabel("states")
-    plt.xlim(0, max_states+1)
-    plt.ylabel("Log Probability")
-    plt.show()
-    plt.title(subject + ' Model Fitting')
-    if save_folder !='':
-        plt.savefig(save_folder + subject +'_state_number_fitting.png')
+    if plot == True: 
+        #plot ll calculations
+        cols = ['#ff7f00', '#4daf4a', '#377eb8', '#7E37B8']
+        fig = plt.figure(figsize=(4, 3), dpi=80, facecolor='w', edgecolor='k')
+        for iS, num_states in enumerate(range(1,max_states+1)):
+            plt.plot((iS+1)*np.ones(nKfold),ll_training[iS,:], color=cols[0], marker='o',lw=0)
+            plt.plot((iS+1)*np.ones(nKfold),ll_heldout[iS,:], color=cols[1], marker='o',lw=0)
+            plt.plot((iS+1)*np.ones(nKfold),ll_training_map[iS,:], color=cols[2], marker='o',lw=0)
+            plt.plot((iS+1)*np.ones(nKfold),ll_heldout_map[iS,:], color=cols[3], marker='o',lw=0)
+        
+        plt.plot(range(1,max_states+1),np.mean(ll_training,1), label="training_MLE", color=cols[0])
+        plt.plot(range(1,max_states+1),np.mean(ll_heldout,1), label="test_MLE", color=cols[1])
+        plt.plot(range(1,max_states+1),np.mean(ll_training_map,1), label="training_MAP", color=cols[2])
+        plt.plot(range(1,max_states+1),np.mean(ll_heldout_map,1), label="test_MAP", color=cols[3])
+        # plt.plot([0, len(fit_ll)], true_ll * np.ones(2), ':k', label="True")
+        plt.legend(loc="lower right")
+        plt.xlabel("states")
+        plt.xlim(0, max_states+1)
+        plt.ylabel("Log Probability")
+        plt.show()
+        plt.title(subject + ' Model Fitting')
+        if save_folder !='':
+            plt.savefig(save_folder + subject +'_state_number_fitting.png')
     
     # #drop lowest kfold value and determine highest LL state for use in model selected
     # ll_heldout_droplow = np.zeros([ll_heldout.shape[0],ll_heldout.shape[1]-1])
