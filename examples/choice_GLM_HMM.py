@@ -7,6 +7,7 @@ Created on Fri Oct 29 12:58:29 2021
 Example utilizing uobrainflex packages to fit GLM_HMM model to behavioral sessions
 """
 
+import os
 from uobrainflex.utils import djconnect
 from uobrainflex.pipeline import subject as subjectSchema
 from uobrainflex.pipeline import acquisition as acquisitionSchema
@@ -16,6 +17,16 @@ from uobrainflex.behavioranalysis import flex_hmm
 
 # specify existing directory to save summary figures to. 
 save_folder = '' # if save_folder == '', plots will be generated but not saved
+if save_folder !='':
+    line_folder = save_folder + 'line summaries\\'
+    patch_folder = save_folder + 'patch summaries\\'
+    
+    os.mkdir(save_folder)
+    os.mkdir(line_folder)
+    os.mkdir(patch_folder)
+else:
+    line_folder = save_folder
+    patch_folder = save_folder
 
 # import behavior session database from datajoint. 
 djSubject = subjectSchema.Subject()
@@ -26,7 +37,8 @@ all_sessions = djBehaviorSession.fetch(format='frame')
 # filter sessions as desired, this could also include a minimum hits/choices per session
 subject = 'BW041'
 training_stage = 'S6'
-hmm_sessions = all_sessions.query("subject_id==@subject and behavior_training_stage==@training_stage")
+min_choices = 100
+hmm_sessions = all_sessions.query("subject_id==@subject and behavior_training_stage==@training_stage and choices_total>@min_choices")
 
 # get nwbfilepaths
 nwbfilepaths = []
@@ -35,7 +47,7 @@ for fileID in hmm_sessions.index:                                               
     if this_session:
         nwbfilepaths.append(this_session)
         
-nwbfilepaths = nwbfilepaths[-20:] # truncate sessions used for this example
+# nwbfilepaths = nwbfilepaths[-20:] # truncate sessions used for this example
 ## fitting GLM-HMM from list of filepaths`
 # load and format data. Getting behavior measures will significantly slow this down.
 inpts, true_choices, hmm_trials = flex_hmm.compile_choice_hmm_data(nwbfilepaths, get_behavior_measures = True)
@@ -58,6 +70,7 @@ flex_hmm.plot_state_psychometrics(subject, hmm, inpts, true_choices, save_folder
 flex_hmm.plot_transition_matrix(subject, hmm, save_folder)
 
 ## plot relation between beahvior measures and state
-flex_hmm.plot_session_summaries(subject, hmm_trials,nwbfilepaths,save_folder)
-flex_hmm.plot_session_summaries_patch(subject, hmm_trials,dwell_times,nwbfilepaths,save_folder)
-flex_hmm.plot_state_measure_histograms(subject, hmm_trials, save_folder)
+flex_hmm.plot_measures_by_state(subject, hmm_trials, save_folder)
+flex_hmm.plot_session_summaries(subject, hmm_trials,nwbfilepaths,line_folder)
+flex_hmm.plot_session_summaries_patch(subject, hmm_trials,dwell_times,nwbfilepaths,patch_folder)
+

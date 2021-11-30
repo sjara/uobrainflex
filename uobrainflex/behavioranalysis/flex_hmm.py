@@ -11,6 +11,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from matplotlib.patches import Rectangle
+import scipy
+
+cols = ['#ff7f00', '#4daf4a', '#377eb8', '#7E37B8','m','r','c']
 
 
 def format_choice_behavior_hmm(trial_data, trial_labels, drop_no_response=False, drop_distractor_trials=True):
@@ -75,9 +78,10 @@ def format_choice_behavior_hmm(trial_data, trial_labels, drop_no_response=False,
         stim_val = stim_val[~np.isnan(stim_val)]
         stim_val = ((stim_val - 45)/45)
         stim_val = np.flip(np.unique(abs(stim_val)))
-        for this_diff in np.flip(np.unique(vis_val)):
-            ind = np.where(vis_val==this_diff)[0]
-            vis_stim_id[ind]=stim_val[int(this_diff)]
+        if len(stim_val)>0:
+            for this_diff in np.flip(np.unique(vis_val)):
+                ind = np.where(vis_val==this_diff)[0]
+                vis_stim_id[ind]=stim_val[int(this_diff)]
     else:
         vis_stim_id[vis_val==1]=.8
         vis_stim_id[vis_val==2]=.6
@@ -155,234 +159,8 @@ def compile_choice_hmm_data(sessions, get_behavior_measures=False, verbose=True)
         
     return inpts, true_choices, hmm_trials
 
-def sampleSizeEstimation(subject, num_sess, inpts, true_choices, stim_vals, obs_dim, num_categories, input_dim):
-    
-    max_states = 4
-    nKfold = 5
-    N_iters = 1000
-#    num_states_cv = choice_hmm_state_fit(subject, inpts, true_choices, max_states, plot=False,
-#                                            obs_dim=obs_dim, num_categories=num_categories, input_dim=input_dim)
-#    
-    map_results, mle_results, models = modelSelectionCV(inpts, true_choices, max_states, nKfold, 
-                                                        num_categories, obs_dim, input_dim, 
-                                                        N_iters=N_iters, TOL=10**-6, min_states=1)
-    best_map=np.mean(map_results[1],1).argmax()
-    num_states_map=best_map+1 
-    # note: EM algorithm is not convex ie you find a different result every time you run it
-    # To deal with this issue, we will run EM 5 times on all the data but with random initial conditions and pick the best run 
-    # pick the state with the best MAP likelihood and retrain the model on the whole dataset      
-    #Create HMM object to fit: MAP
-    # Instantiate GLM-HMM and set prior hyperparameters
-    prior_sigma = 2
-    prior_alpha = 2
-    map_glmhmm = ssm.HMM(num_states_map, obs_dim, input_dim, observations="input_driven_obs", 
-                   observation_kwargs=dict(C=num_categories,prior_sigma=prior_sigma),
-                 transitions="sticky", transition_kwargs=dict(alpha=prior_alpha,kappa=0))
-    # fit on whole data
-    Nruns=5
-    ll_runs=np.zeros((Nruns))
-    hmm_runs=[]
-    nData = len(inpts)
-    for iRun in range(Nruns):
-        map_glmhmm = ssm.HMM(num_states_map, obs_dim, input_dim, observations="input_driven_obs", 
-                   observation_kwargs=dict(C=num_categories,prior_sigma=prior_sigma),
-                 transitions="sticky", transition_kwargs=dict(alpha=prior_alpha,kappa=0))
-        hmm_lls = map_glmhmm.fit(true_choices, inputs=inpts, method="em", num_iters=N_iters, tolerance=10**-6)                
-        hmm_runs.append(map_glmhmm)
-        ll_runs[iRun] = map_glmhmm.log_probability(true_choices, inputs=inpts)/nData
-        
-    best_run=ll_runs.argmax()
-    hmm_bestfit=hmm_runs[best_run]
 
-    num_trials_per_sess = 400#how many trials per simulated session
-    true_inpts, true_latents, true_choices = simulateData(hmm_bestfit, num_sess, num_trials_per_sess, stim_vals, input_dim, plot=False)
-    
-    data_sim = [inpts, true_latents, true_choices]
-    num_sess_min = 1
-    num_sess_max = num_sess
-    sess_to_recov = sessionsToRecover(data_sim, num_states_map, obs_dim, num_categories, input_dim, num_sess_min, num_sess_max)
-    return sess_to_recov
-
-def sessionsToRecover(data_sim, num_states, obs_dim, num_categories, input_dim, num_sess_min, num_sess_max):
-    num_states_true = num_states
-    nKfold = 5
-    first = True#keep track of when first time we recover back the ground truth number of states
-    sess_to_recov = 0
-    for num_sess in range(num_sess_min, num_sess_max):
-        inpts_ = data_sim[0][:num_sess]
-        true_latents_ = data_sim[1][:num_sess]
-        true_choices_ = data_sim[2][:num_sess]
-        ##===== K-fold Cross-Validation =====##
-        map_results, mle_results, models = modelSelectionCV(inpts, true_choices, max_states, nKfold, 
-                                                            num_categories, obs_dim, input_dim, N_iters=1000, TOL=10**-6, min_states=1)
-        best_map=np.mean(map_results[1],1).argmax()
-        num_states_map=best_map+1 
-        if (num_states_map == num_states_true) and first:
-            sess_to_recov = num_sess
-            first = False
-            return sess_to_recov
-        #best_mle=np.mean(testing_results_mle,1).argmax()
-        #num_states_mle=best_mle+1
-        
-    return sess_to_recov
-
-def simulateData(true_glmhmm, num_sess, num_trials_per_sess, stim_vals, input_dim, plot=True):
-    """
-    Simulate an example set of external inputs for each trial in a session.
-    Parameters
-    ----------
-    true_glmhmm : HMM-GLM model object
-        GLM-HMM estimation object to be used to generate synthetic data.
-    num_trials_per_sess : scalar
-        number of trials in a session.
-    stim_vals : list
-        stimulus values to be used as input to model for synthetic data generation.
-        (e.g. stim_vals = [.98,.75,.62,-.62,-.75,-.98])
-    Returns
-    -------
-    inpts : HMM-GLM model object
-        input stimuli used by the model to generate the synthetic choice data
-    true_latents : HMM-GLM model object
-        latent states of the ground truth model
-    true_choices : HMM-GLM model object
-        output choices of the ground truth model, i.e. synthetic choice data
-    """
-    inpts = np.ones((num_sess, num_trials_per_sess, input_dim)) # initialize inpts array
-    inpts[:,:,0] = np.random.choice(stim_vals, (num_sess, num_trials_per_sess)) # generate random sequence of stimuli
-    inpts = list(inpts) #convert inpts to correct format
-    params = true_glmhmm.observations.params
-    num_states = params.shape[0]
-    # Generate a sequence of latents and choices for each session
-    true_latents, true_choices = [], []
-    for sess in range(num_sess):
-        true_z, true_y = true_glmhmm.sample(num_trials_per_sess, input=inpts[sess])
-        true_latents.append(true_z)
-        true_choices.append(true_y)
-    if plot == True:
-        title = str(num_sess) + ' sessions'
-        plotModelBehav(true_glmhmm, inpts, true_choices, stim_vals, title, num_states, occ_thresh=0.8)
-    return inpts, true_latents, true_choices
-
-def modelSelectionCV(inpts, true_choices, max_states, nKfold, 
-                     num_categories, obs_dim, input_dim, N_iters=1000, TOL=10**-6, min_states=1):
-    """
-    Perform K Fold cross validation for model selection.
-    Parameters
-    ----------
-    inpts : HMM-GLM model object
-        input stimuli used by the model to generate the synthetic choice data
-    true_choices : HMM-GLM model object
-        output choices of the ground truth model, i.e. synthetic choice data
-    max_states : scalar
-        maximum number of states for which to perform model selection.
-    nKfold : scalar
-        number of cross validation folds
-    obs_dim : scalar
-        number of observed dimensions.
-    input_dim : scalar
-        number of input data dimensions
-    N_iters : scalar
-        maximum number of EM iterations. Fitting with stop earlier 
-        if increase in LL is below tolerance specified by tolerance parameter. Default 1000.
-    TOL : scalar
-        tolerance parameter (see N_iters). Default 10**-6.
-    min_states : scalar
-        minimum number of states for which to perform model selection. Default 1.
-    Returns
-    -------
-    (ll_training_map, ll_heldout_map) : tuple of np.ndarray's
-        tuple containing results for model selection using MAP. 
-        The first entry is the model log likelihood for the tested number of states
-        on the training data set. The second entry is the mode log likelihood on 
-        the test set.
-    (ll_training_mle, ll_heldout_mle) : tuple of np.ndarray's
-        tuple containing results for model selection using MLE. 
-        The first entry is the model log likelihood for the tested number of states
-        on the training data set. The second entry is the mode log likelihood on 
-        the test set.
-    """
-    from sklearn.model_selection import KFold
-    kf = KFold(n_splits=nKfold, shuffle=True, random_state=None)
-    #synthetic data: list of length num folds, elements are trial num x obs_dim (1)
-    syn_dat_temp = np.vstack(true_choices)
-    size = int(syn_dat_temp.shape[0]/nKfold)
-    syn_dat_temp = np.split(syn_dat_temp, np.arange(size,syn_dat_temp.shape[0],size))
-    if syn_dat_temp[-1].shape[0] != syn_dat_temp[0].shape[0]:
-        syn_dat_temp.pop()
-    synthetic_data = syn_dat_temp
-    #synthetic_data = [syn_dat_temp[j] for j in range(syn_dat_temp.shape[0])]
-    #synthetic inpts: list of length num folds, elements are trial num x input_dim (2)
-    #syn_inpt_temp = np.vstack(inpts).reshape((nKfold, -1, input_dim))
-    syn_inpt_temp = np.vstack(inpts)
-    size = int(syn_inpt_temp.shape[0]/nKfold)
-    syn_inpt_temp = np.split(syn_inpt_temp, np.arange(size,syn_inpt_temp.shape[0],size))
-    if syn_inpt_temp[-1].shape[0] != syn_inpt_temp[0].shape[0]:
-        syn_inpt_temp.pop()
-    synthetic_inpts = syn_inpt_temp
-    #synthetic_inpts = [syn_inpt_temp[j] for j in range(syn_inpt_temp.shape[0])]
-    #Just for sanity's sake, let's check how it splits the data
-    #So 5-fold cross-validation uses 80% of the data to train the model, and holds 20% for testing
-#     for ii, (train_index, test_index) in enumerate(kf.split(synthetic_data)):
-#         print(f"kfold {ii} TRAIN:", len(train_index), "TEST:", len(test_index))
-
-    # initialized training and test loglik for model selection, and BIC
-    ll_training_mle = np.zeros((max_states,nKfold))
-    ll_heldout_mle = np.zeros((max_states,nKfold))
-    ll_training_map = np.zeros((max_states,nKfold))
-    ll_heldout_map = np.zeros((max_states,nKfold))
-    # BIC = np.zeros((max_states))
-    #storage for model parameters
-    mle_mods = {'GLM_weights':[], 'HMM_probs':[], 'inpts':[], 'true_choices':[]}
-    map_mods = {'GLM_weights':[], 'HMM_probs':[], 'inpts':[], 'true_choices':[]}
-
-    #Outer loop over the parameter for which you're doing model selection for
-    for iS, num_states in enumerate(range(1,max_states+1)):
-        #Inner loop over kfolds
-        for iK, (train_index, test_index) in enumerate(kf.split(synthetic_data)):
-            nTrain = len(train_index); nTest = len(test_index)#*obs_dim
-
-            #training data: list of length training folds (4), elements are trial num x obs_dim (1)
-            #training inpts: list of length training folds (4), elements are trial num x input_dim (2)
-            # split choice data and inputs
-            training_data = [synthetic_data[i] for i in train_index]
-            test_data = [synthetic_data[i] for i in test_index]
-            training_inpts=[synthetic_inpts[i] for i in train_index]
-            test_inpts=[synthetic_inpts[i] for i in test_index]
-            #Create HMM object to fit: MLE
-            #print(num_states)
-            xval_glmhmm = ssm.HMM(num_states, obs_dim, input_dim, observations="input_driven_obs", 
-                               observation_kwargs=dict(C=num_categories), transitions="standard")
-            #fit on training data
-            hmm_lls = xval_glmhmm.fit(training_data, inputs=training_inpts, verbose=1, method="em", num_iters=N_iters, tolerance=TOL)                
-            #Compute log-likelihood for each dataset
-            ll_training_mle[iS,iK] = xval_glmhmm.log_probability(training_data, inputs=training_inpts)/nTrain
-            ll_heldout_mle[iS,iK] = xval_glmhmm.log_probability(test_data, inputs=test_inpts)/nTest
-
-            #Create HMM object to fit: MAP
-            # Instantiate GLM-HMM and set prior hyperparameters
-            prior_sigma = 2
-            prior_alpha = 2
-            map_glmhmm = ssm.HMM(num_states, obs_dim, input_dim, observations="input_driven_obs", 
-                           observation_kwargs=dict(C=num_categories,prior_sigma=prior_sigma),
-                         transitions="sticky", transition_kwargs=dict(alpha=prior_alpha,kappa=0))
-            #fit on training data
-            hmm_lls = map_glmhmm.fit(training_data, inputs=training_inpts, verbose=1, method="em", num_iters=N_iters, tolerance=TOL)                
-            #Compute log-likelihood for each dataset
-            ll_training_map[iS,iK] = map_glmhmm.log_probability(training_data, inputs=training_inpts)/nTrain
-            ll_heldout_map[iS,iK] = map_glmhmm.log_probability(test_data, inputs=test_inpts)/nTest
-
-            map_mods['GLM_weights'].append(map_glmhmm.observations.params)
-            map_mods['HMM_probs'].append(map_glmhmm.transitions.log_Ps)
-            map_mods['inpts'].append(test_inpts)
-            map_mods['true_choices'].append(test_data)
-            mle_mods['GLM_weights'].append(xval_glmhmm.observations.params)
-            mle_mods['HMM_probs'].append(xval_glmhmm.transitions.log_Ps)
-            mle_mods['inpts'].append(test_inpts)
-            mle_mods['true_choices'].append(test_data)
-            
-    return (ll_training_map, ll_heldout_map), (ll_training_mle, ll_heldout_mle), (map_mods, mle_mods)
-
-def choice_hmm_state_fit(subject, inpts, true_choices, max_states=4, plot=True, save_folder='', **kwargs):
+def choice_hmm_sate_fit(subject, inpts, true_choices, max_states=4, save_folder=''):
     # inpts, true_choices = compile_choice_hmm_data(sessions)
     ### State Selection
     #Create kfold cross-validation object which will split data for us
@@ -407,20 +185,9 @@ def choice_hmm_state_fit(subject, inpts, true_choices, max_states=4, plot=True, 
     # BIC = np.zeros((max_states))
     
     # # Set the parameters of the GLM-HMM
-    if 'obs_dim' in kwargs.keys():
-        obs_dim = kwargs['obs_dim']
-    else:
-        obs_dim = 1           # number of observed dimensions
-    
-    if 'num_categories' in kwargs.keys():
-        num_categories = kwargs['num_categories']
-    else:
-        num_categories = 2    # number of categories for output
-    
-    if 'input_dim' in kwargs.keys():
-        input_dim = kwargs['input_dim']
-    else:
-        input_dim = 2         # input dimensions
+    obs_dim = 1           # number of observed dimensions
+    num_categories = len(np.unique(np.concatenate(true_choices)))    # number of categories for output
+    input_dim = inpts[0].shape[1]                                    # input dimensions
     
     #Outer loop over the parameter for which you're doing model selection for
     for iS, num_states in enumerate(range(1,max_states+1)):
@@ -459,29 +226,29 @@ def choice_hmm_state_fit(subject, inpts, true_choices, max_states=4, plot=True, 
             ll_training_map[iS,iK] = map_glmhmm.log_probability(training_data, inputs=training_inpts)/nTrain
             ll_heldout_map[iS,iK] = map_glmhmm.log_probability(test_data, inputs=test_inpts)/nTest
             
-    if plot == True: 
-        #plot ll calculations
-        cols = ['#ff7f00', '#4daf4a', '#377eb8', '#7E37B8']
-        fig = plt.figure(figsize=(4, 3), dpi=80, facecolor='w', edgecolor='k')
-        for iS, num_states in enumerate(range(1,max_states+1)):
-            plt.plot((iS+1)*np.ones(nKfold),ll_training[iS,:], color=cols[0], marker='o',lw=0)
-            plt.plot((iS+1)*np.ones(nKfold),ll_heldout[iS,:], color=cols[1], marker='o',lw=0)
-            plt.plot((iS+1)*np.ones(nKfold),ll_training_map[iS,:], color=cols[2], marker='o',lw=0)
-            plt.plot((iS+1)*np.ones(nKfold),ll_heldout_map[iS,:], color=cols[3], marker='o',lw=0)
-        
-        plt.plot(range(1,max_states+1),np.mean(ll_training,1), label="training_MLE", color=cols[0])
-        plt.plot(range(1,max_states+1),np.mean(ll_heldout,1), label="test_MLE", color=cols[1])
-        plt.plot(range(1,max_states+1),np.mean(ll_training_map,1), label="training_MAP", color=cols[2])
-        plt.plot(range(1,max_states+1),np.mean(ll_heldout_map,1), label="test_MAP", color=cols[3])
-        # plt.plot([0, len(fit_ll)], true_ll * np.ones(2), ':k', label="True")
-        plt.legend(loc="lower right")
-        plt.xlabel("states")
-        plt.xlim(0, max_states+1)
-        plt.ylabel("Log Probability")
-        plt.show()
-        plt.title(subject + ' Model Fitting')
-        if save_folder !='':
-            plt.savefig(save_folder + subject +'_state_number_fitting.png')
+    
+    #plot ll calculations
+    global cols
+    fig = plt.figure(figsize=(4, 3), dpi=80, facecolor='w', edgecolor='k')
+    for iS, num_states in enumerate(range(1,max_states+1)):
+        plt.plot((iS+1)*np.ones(nKfold),ll_training[iS,:], color=cols[0], marker='o',lw=0)
+        plt.plot((iS+1)*np.ones(nKfold),ll_heldout[iS,:], color=cols[1], marker='o',lw=0)
+        plt.plot((iS+1)*np.ones(nKfold),ll_training_map[iS,:], color=cols[2], marker='o',lw=0)
+        plt.plot((iS+1)*np.ones(nKfold),ll_heldout_map[iS,:], color=cols[3], marker='o',lw=0)
+    
+    plt.plot(range(1,max_states+1),np.mean(ll_training,1), label="training_MLE", color=cols[0])
+    plt.plot(range(1,max_states+1),np.mean(ll_heldout,1), label="test_MLE", color=cols[1])
+    plt.plot(range(1,max_states+1),np.mean(ll_training_map,1), label="training_MAP", color=cols[2])
+    plt.plot(range(1,max_states+1),np.mean(ll_heldout_map,1), label="test_MAP", color=cols[3])
+    # plt.plot([0, len(fit_ll)], true_ll * np.ones(2), ':k', label="True")
+    plt.legend(loc="lower right")
+    plt.xlabel("states")
+    plt.xlim(0, max_states+1)
+    plt.ylabel("Log Probability")
+    plt.show()
+    plt.title(subject + ' Model Fitting')
+    if save_folder !='':
+        plt.savefig(save_folder + subject +'_state_number_fitting.png')
     
     # #drop lowest kfold value and determine highest LL state for use in model selected
     # ll_heldout_droplow = np.zeros([ll_heldout.shape[0],ll_heldout.shape[1]-1])
@@ -554,7 +321,7 @@ def plot_GLM_weights(subject, hmm,save_folder=''):
         input_dim = 1
         plt.figure()
 
-    cols = ['#ff7f00', '#4daf4a', '#377eb8', 'm','r']
+    global cols
     # Plot covariate GLM weights by HMM state
 
     for iC in range(input_dim):
@@ -589,10 +356,10 @@ def plot_session_posterior_probs(subject, hmm,true_choices,inpts, save_folder=''
                        in zip(true_choices, inpts)]
     
     num_states =len(hmm.observations.params)
+    global cols    
     
     for sess_id in range(0,len(true_choices)):
         plt.figure()
-        cols = ['#ff7f00', '#4daf4a', '#377eb8','m','r']
         #sess_id = 2 #session id; can choose any index between 0 and num_sess-1
         for indst in range(num_states):
             plt.plot(posterior_probs[sess_id][:, indst], label="State " + str(indst + 1), lw=2,
@@ -628,8 +395,8 @@ def plot_transition_matrix(subject, hmm, save_folder=''):
 
 
 def plot_state_occupancy(subject, hmm_trials, save_folder=''):
-    cols = ['#ff7f00', '#4daf4a', '#377eb8','m','r']
 
+    global cols
     state = np.empty(0)
     for trials in hmm_trials:
         state = np.append(state, trials['hmm_state'].values)
@@ -651,11 +418,21 @@ def plot_state_occupancy(subject, hmm_trials, save_folder=''):
     plt.ylabel('frac. occupancy', fontsize=15)
     plt.title(subject + ' State Occupancy', fontsize=15)
     if save_folder !='':
-        plt.savefig(save_folder + subject + "_state_occupancy.png")
+        plt.savefig(save_folder + subject + "_state_occupancy.png")    
+    
+    plt.figure()
+    session_state_occupancy = pd.DataFrame(columns=xs)
+    for idx, trials in enumerate(hmm_trials):
+        for state in xs:
+            session_state_occupancy.loc[idx,state] = len(np.where(trials["hmm_state"] == state)[0])/len(trials)
+    for state in session_state_occupancy.columns:
+        plt.plot(session_state_occupancy[state],color=cols[state])
+
+    if save_folder !='':
+        plt.savefig(save_folder + subject + "_state_occupancy_by_session.png")
 
 def plot_state_posteriors_CDF(subject, posterior_probs, save_folder=''):
-    cols = ['#ff7f00', '#4daf4a', '#377eb8','m','r']
-    
+    global cols     
     posterior_probs_concat = np.concatenate(posterior_probs)
     # get state with maximum posterior probability at particular trial:
     state_max_posterior = np.argmax(posterior_probs_concat, axis = 1)
@@ -684,7 +461,7 @@ def plot_state_psychometrics(subject, hmm, inpts,true_choices,save_folder=''):
     inpts_concat = np.concatenate(inpts)
     trial_inpts = inpts_concat[:,0]
     choice_concat = np.concatenate(true_choices)
-    cols = ['#ff7f00', '#4daf4a', '#377eb8','m','k']
+    global cols
     posterior_probs = [hmm.expected_states(data=data, input=inpt)[0]
                for data, inpt
                in zip(true_choices, inpts)]
@@ -749,8 +526,7 @@ def plot_state_psychometrics(subject, hmm, inpts,true_choices,save_folder=''):
         
     # actual_inpts = [-.98, -.63, -.44, .44, .63, .98]
     # state_inpt_choice.columns = actual_inpts
-    cols = ['#ff7f00', '#4daf4a', '#377eb8','m','k']
-
+    global cols
     # states = state_inpt_hits.index
     # for idx,state in enumerate(states):
     #     plt.plot(state_inpt_hits.loc[state,:],color=cols[idx],linewidth=3,marker='o')    
@@ -841,7 +617,7 @@ def plot_state_psychometrics(subject, hmm, inpts,true_choices,save_folder=''):
         plt.savefig(save_folder + subject + "_performance_weight.png")
     
 def plot_dwell_times(subject, hmm_trials, save_folder = ''):
-    cols = ['#ff7f00', '#4daf4a', '#377eb8', 'm','r']
+    global cols
     session_transitions=[]
     all_transitions=pd.DataFrame()
     for sess, trials in enumerate(hmm_trials):
@@ -892,13 +668,15 @@ def plot_dwell_times(subject, hmm_trials, save_folder = ''):
     plt.ylabel('Fraction in State')
     plt.title(subject + ' State Dwell Times')
     plt.legend(lgnd)
+    
+    if save_folder != '':
+        plt.savefig(save_folder +  subject + "_state_dwelltime_distribution.png")       
         
     return session_transitions
         
     
 def plot_session_summaries(subject, hmm_trials,nwbfilepaths,save_folder =''):
-    cols = ['#ff7f00', '#4daf4a', '#377eb8', 'm','r']
-
+    global cols
     for session, these_trials in enumerate(hmm_trials):
         columns = these_trials.columns
         # plt.figure()    
@@ -912,17 +690,23 @@ def plot_session_summaries(subject, hmm_trials,nwbfilepaths,save_folder =''):
         if any(columns=='state_4_prob'):
             plt.plot(these_trials['state_4_prob'].values,cols[3],linewidth=3)
             lg.append('state 4')
-        pupil = these_trials['pupil_size']
+        if any(columns=='state_5_prob'):
+            plt.plot(these_trials['state_5_prob'].values,cols[4],linewidth=3)
+            lg.append('state 5')
+        if any(columns=='state_6_prob'):
+            plt.plot(these_trials['state_6_prob'].values,cols[5],linewidth=3)
+            lg.append('state 6')
+        pupil = these_trials['pupil_diameter']
         pupil = pupil/2+.5
         plt.scatter(range(len(these_trials)),pupil,color='k')
-        run = these_trials['run']
+        run = these_trials['running_speed']
         run = run/max(run)/6+.33
         plt.scatter(range(len(these_trials)),run,color='k',marker = ">")
-        whisk = these_trials['whisk']
+        whisk = these_trials['whisker_energy']
         whisk = whisk/max(whisk)/6+.16
         plt.scatter(range(len(these_trials)),whisk,color='k',marker = "s")
         rt = these_trials['reaction_time']
-        rt = rt/max(rt)/6
+        rt = rt/np.nanmax(rt)/6
         plt.scatter(range(len(these_trials)),rt,color='k',marker = "*")
         for measure in ['pupil','wheel','whisk']:
             lg.append(measure)
@@ -934,8 +718,7 @@ def plot_session_summaries(subject, hmm_trials,nwbfilepaths,save_folder =''):
 
 
 def plot_session_summaries_patch(subject, hmm_trials,dwell_times,nwbfilepaths,save_folder =''):
-    cols = ['#ff7f00', '#4daf4a', '#377eb8', 'm','r']
-
+    global cols
     for session, these_trials in enumerate(hmm_trials):
         hand=[]
         lg=[]
@@ -943,22 +726,23 @@ def plot_session_summaries_patch(subject, hmm_trials,dwell_times,nwbfilepaths,sa
         fig = plt.figure(figsize=(25, 12), facecolor='w', edgecolor='k')
         ax = fig.add_axes([0.1, .1, 0.8, .8])
 
-        for idx in dwells.index: 
-            ax.add_patch(Rectangle((dwells.loc[idx,'first_trial']-.4,0), dwells.loc[idx,'dwell']-1.1, 1,color=cols[int(dwells.loc[idx,'state'])],alpha=.2))
-        for idx in range(0,int(max(dwells['state']))+1):
-            hand.append(ax.add_patch(Rectangle((0,0),0,0,color=cols[idx],alpha=.2)))
-            lg.append('state ' + str(idx+1))
-        pupil = these_trials['pupil_size']
+        if len(dwells.index)>0:
+            for idx in dwells.index: 
+                ax.add_patch(Rectangle((dwells.loc[idx,'first_trial']-.4,0), dwells.loc[idx,'dwell']-1.1, 1,color=cols[int(dwells.loc[idx,'state'])],alpha=.2))
+            for idx in range(0,int(max(dwells['state']))+1):
+                hand.append(ax.add_patch(Rectangle((0,0),0,0,color=cols[idx],alpha=.2)))
+                lg.append('state ' + str(idx+1))
+        pupil = these_trials['pupil_diameter']
         pupil = pupil/2+.5
         hand.append(plt.scatter(range(len(these_trials)),pupil,color='k'))
-        run = these_trials['run']
+        run = these_trials['running_speed']
         run = run/max(run)/6+.33
         hand.append(plt.scatter(range(len(these_trials)),run,color='k',marker = ">"))
-        whisk = these_trials['whisk']
+        whisk = these_trials['whisker_energy']
         whisk = whisk/max(whisk)/6+.16
         hand.append(plt.scatter(range(len(these_trials)),whisk,color='k',marker = "s"))
         rt = these_trials['reaction_time']
-        rt = rt/max(rt)/6
+        rt = rt/np.nanmax(rt)/6
         hand.append(plt.scatter(range(len(these_trials)),rt,color='k',marker = "*"))
         for measure in ['pupil','wheel','whisk']:
             lg.append(measure)
@@ -966,100 +750,73 @@ def plot_session_summaries_patch(subject, hmm_trials,dwell_times,nwbfilepaths,sa
         plt.xlabel('Trial',fontsize = 30)
         plt.title(nwbfilepaths[session],fontsize=17)
         if save_folder != '':
-            plt.savefig(save_folder +  subject + "_session_" + str(session) + "_summary.png")   
-            
-            
-def plot_state_measure_histograms(subject, hmm_trials, save_folder = ''):
-    all_pupil = np.empty(0)
-    all_run = np.empty(0)
-    all_whisk = np.empty(0)
-    S1_posterior = np.empty(0)
-    S2_posterior = np.empty(0)
-    S3_posterior = np.empty(0)
-    S4_posterior = np.empty(0)
+            plt.savefig(save_folder +  subject + "_session_" + str(session) + "_summary.png")         
+         
+def mean_confidence_interval(data, confidence=0.95):
+    a = 1.0 * np.array(data)
+    n = len(a)
+    m, se = np.mean(a), scipy.stats.sem(a)
+    ci = se * scipy.stats.t.ppf((1 + confidence) / 2., n-1)
+    return m, ci   
+         
+def plot_measures_by_state(subject, hmm_trials, save_folder = ''):
+
+    global cols
     
-    trial_df = pd.DataFrame()
+    xlabels = {'pupil_diameter': 'Pupil Diameter (% max)',
+               'running_speed': 'Wheel Speed (m/s)',
+               'whisker_energy': 'Whisker Motion Energy (a.u)',
+               'reaction_time': 'Reaction Time (ms)',
+               'hmm_state': 'HMM state'}
+    titles = {'pupil_diameter': 'Pupil',
+             'running_speed': 'Wheel speed',
+             'whisker_energy': 'Whisker movement',
+             'reaction_time':'Reaction time',
+             'hmm_state':''}
+    
+    measures = pd.DataFrame(columns=['pupil_diameter','running_speed','whisker_energy','reaction_time','hmm_state'])
+    
     for trials in hmm_trials:
-        all_pupil = np.append(all_pupil, trials['pupil_size'].values)
-        all_run = np.append(all_run, trials['run'].values)
-        all_whisk = np.append(all_whisk, trials['whisk'].values)
-        S1_posterior = np.append(S1_posterior, trials['state_1_prob'].values)
-        S2_posterior = np.append(S2_posterior, trials['state_2_prob'].values)
-        S3_posterior = np.append(S3_posterior, trials['state_3_prob'].values)
-        S4_posterior = np.append(S4_posterior, trials['state_4_prob'].values)
-        
-    trial_df['pupil']=all_pupil
-    trial_df['whisk']=all_whisk
-    trial_df['run']=all_run
-    trial_df['state']=np.nan
-    trial_df.loc[np.where(S1_posterior>.8)[0],'state']=1
-    trial_df.loc[np.where(S2_posterior>.8)[0],'state']=2
-    trial_df.loc[np.where(S3_posterior>.8)[0],'state']=3
-    trial_df.loc[np.where(S4_posterior>.8)[0],'state']=4
+        measures = measures.append(trials[measures.columns])
     
+    states = np.unique(measures['hmm_state'].dropna())
     
-    S1 = trial_df.loc[trial_df['state'] == 1]
-    S2 = trial_df.loc[trial_df['state'] == 2]
-    S3 = trial_df.loc[trial_df['state'] == 3]
-    S4 = trial_df.loc[trial_df['state'] == 4]
-    
-    cols = ['#ff7f00', '#4daf4a', '#377eb8','m','k']
-    ## pupil
-    plt.figure()
-    S1_data = np.histogram(S1['pupil'],np.arange(0,1,.02))
-    S2_data = np.histogram(S2['pupil'],np.arange(0,1,.02))
-    S3_data = np.histogram(S3['pupil'],np.arange(0,1,.02))
-    S4_data = np.histogram(S4['pupil'],np.arange(0,1,.02))
-    plt.plot(S1_data[1][:-1],S1_data[0]/sum(S1_data[0]),color=cols[0],linewidth=3)
-    plt.plot(S2_data[1][:-1],S2_data[0]/sum(S2_data[0]),color=cols[1],linewidth=3)
-    plt.plot(S3_data[1][:-1],S3_data[0]/sum(S3_data[0]),color=cols[2],linewidth=3)
-    plt.plot(S4_data[1][:-1],S4_data[0]/sum(S4_data[0]),color=cols[3],linewidth=3)
-    
-    plt.legend(['S1, n = ' + str(len(S1)),'S2, n = ' + str(len(S2)),
-                'S3, n = ' + str(len(S3)),'S4, n = ' + str(len(S4))])
-    
-    plt.title(subject + '\nPupil distribution by state')
-    plt.xlabel('Pupil Diameter (% max)')
-    plt.ylabel('Probability')
-    
-    if save_folder !='':
-        plt.savefig(save_folder + subject + "_pupils_by_state.png")
-    ## run
-    plt.figure()
-    S1_data = np.histogram(S1['run'],np.arange(-.1,.5,.02))
-    S2_data = np.histogram(S2['run'],np.arange(-.1,.5,.02))
-    S3_data = np.histogram(S3['run'],np.arange(-.1,.5,.02))
-    S4_data = np.histogram(S4['run'],np.arange(-.1,.5,.02))
-    plt.plot(S1_data[1][:-1],S1_data[0]/sum(S1_data[0]),color=cols[0],linewidth=3)
-    plt.plot(S2_data[1][:-1],S2_data[0]/sum(S2_data[0]),color=cols[1],linewidth=3)
-    plt.plot(S3_data[1][:-1],S3_data[0]/sum(S3_data[0]),color=cols[2],linewidth=3)
-    plt.plot(S4_data[1][:-1],S4_data[0]/sum(S4_data[0]),color=cols[3],linewidth=3)
-    
-    plt.legend(['S1, n = ' + str(len(S1)),'S2, n = ' + str(len(S2)),
-                'S3, n = ' + str(len(S3)),'S4, n = ' + str(len(S4))])
-    
-    plt.title(subject + '\nWheel speed distribution by state')
-    plt.xlabel('Wheel speed (m/s)')
-    plt.ylabel('Probability')
-    if save_folder !='':
-        plt.savefig(save_folder + subject + "_running_by_state.png")
-    
-    ## whisk
-    plt.figure()
-    S1_data = np.histogram(S1['whisk'],np.arange(0,.2,.01))
-    S2_data = np.histogram(S2['whisk'],np.arange(0,.2,.01))
-    S3_data = np.histogram(S3['whisk'],np.arange(0,.2,.01))
-    S4_data = np.histogram(S4['whisk'],np.arange(0,.2,.01))
-    plt.plot(S1_data[1][:-1],S1_data[0]/sum(S1_data[0]),color=cols[0],linewidth=3)
-    plt.plot(S2_data[1][:-1],S2_data[0]/sum(S2_data[0]),color=cols[1],linewidth=3)
-    plt.plot(S3_data[1][:-1],S3_data[0]/sum(S3_data[0]),color=cols[2],linewidth=3)
-    plt.plot(S4_data[1][:-1],S4_data[0]/sum(S4_data[0]),color=cols[3],linewidth=3)
-    
-    plt.legend(['S1, n = ' + str(len(S1)),'S2, n = ' + str(len(S2)),
-                'S3, n = ' + str(len(S3)),'S4, n = ' + str(len(S4))])
-    
-    plt.title(subject +'\nWhisker motion energy distribution by state')
-    plt.xlabel('Motion Energy (a.u.)')
-    plt.ylabel('Probability')
-    if save_folder !='':
-        plt.savefig(save_folder + subject + "_whisk_by_state.png")
+    legends =[]
+    for state in states:
+        n= len(measures.query('hmm_state==@state'))
+        legends.append('State ' + str(int(state+1)) + ' (n = ' + str(int(n))+')')
+ 
+    for measure in measures.columns:
+        plt.figure()
+        this_data = measures[measure].dropna()
+        bins = np.arange(min(this_data),max(this_data),np.std(this_data)/5)
+        for state in states:
+            measure_data = measures.query('hmm_state == @state')[measure]
+            hist_data = np.histogram(measures.query('hmm_state == @state')[measure],bins=bins)
+            plt.plot(hist_data[1][:-1],hist_data[0]/sum(hist_data[0]),color=cols[int(state)],linewidth=3)
+        plt.title(measure)
+        plt.title(subject + '\n' + titles[measure] + ' distribution by state',fontsize=15)
+        plt.xlabel(xlabels[measure],fontsize=12)
+        plt.ylabel('Probability',fontsize=12)
+        plt.legend(legends)
+        if save_folder !='':
+            plt.savefig(save_folder + subject +'_' + measure +"_by_state.png")
+            
+        plt.figure()
+        # all_data={}
+        for state in states:
+            measure_data = measures.query('hmm_state == @state')[measure].dropna()
+            m, ci = mean_confidence_interval(measure_data,.95)
+            plt.plot(state,m,'s',color=cols[int(state)])
+            plt.errorbar(state,m,ci,color=cols[int(state)])
+        plt.xticks(range(0,len(states)),range(1,len(states)+1))
+        plt.xlabel('HMM State')
+        plt.ylabel(xlabels[measure])
+        bot, top= plt.ylim()
+        if bot>0:
+            bot = bot/1.1
+        plt.ylim([bot,top])
+        plt.legend(legends)
+        plt.title(subject + '\n' + titles[measure] + ' statistics by state',fontsize=15)
+        if save_folder !='':
+            plt.savefig(save_folder + subject +'_' + measure +"_stats.png")
