@@ -36,7 +36,7 @@ all_sessions = djBehaviorSession.fetch(format='frame')
 
 # filter sessions as desired, this could also include a minimum hits/choices per session
 subject = 'BW041'
-training_stage = 'S6'
+training_stage = ['S6']
 min_choices = 100
 hmm_sessions = all_sessions.query("subject_id==@subject and behavior_training_stage==@training_stage and choices_total>@min_choices")
 
@@ -60,13 +60,17 @@ hmm = flex_hmm.choice_hmm_fit(subject, num_states, inpts, true_choices)
 # include model outpit in trial data structures
 posterior_probs, hmm_trials = flex_hmm.get_posterior_probs(hmm, true_choices, inpts, hmm_trials, occ_thresh = 0.8)
 
+# permute states to match standard and remap hmm_trials
+# flex_hmm.permute_hmm(hmm,hmm_trials)
+# posterior_probs, hmm_trials = flex_hmm.get_posterior_probs(hmm, true_choices, inpts, hmm_trials, occ_thresh = 0.8)
 
 ## plot results
 flex_hmm.plot_GLM_weights(subject, hmm, save_folder)
 flex_hmm.plot_state_occupancy(subject, hmm_trials, save_folder)
 dwell_times = flex_hmm.plot_dwell_times(subject, hmm_trials, save_folder)
 flex_hmm.plot_state_posteriors_CDF(subject, posterior_probs, save_folder)
-flex_hmm.plot_state_psychometrics(subject, hmm, inpts, true_choices, save_folder)
+flex_hmm.plot_state_psychometrics(subject, hmm_trials, save_folder)
+# flex_hmm.plot_state_psychometrics2(subject, hmm, inpts, true_choices, save_folder)
 flex_hmm.plot_transition_matrix(subject, hmm, save_folder)
 
 ## plot relation between beahvior measures and state

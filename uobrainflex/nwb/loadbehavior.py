@@ -58,6 +58,53 @@ def load_nwb_file(nwbfilepath):
     nwbFileObj = ioObj.read()
     return nwbFileObj
 
+
+def get_stim_vals(trial_data,trial_dict):
+    aud_stim_direction = trial_data['auditory_stim_id'].values
+    aud_stim_direction[np.where(aud_stim_direction==trial_dict['auditory_stim_id']['left'])[0]]=-1
+    aud_stim_direction[np.where(aud_stim_direction==trial_dict['auditory_stim_id']['right'])[0]]=1
+    aud_stim_direction[np.where(aud_stim_direction==trial_dict['auditory_stim_id']['no stim'])[0]]=np.nan
+    aud_stim_value = trial_data['auditory_stim_difficulty'].values
+    aud_stim_value = aud_stim_value-(1-aud_stim_value)/2
+    aud_stim = aud_stim_direction*aud_stim_value
+
+    vis_stim_direction =  trial_data['visual_stim_id'].values
+    vis_stim_direction[np.where(vis_stim_direction==trial_dict['visual_stim_id']['left'])[0]]=-1
+    vis_stim_direction[np.where(vis_stim_direction==trial_dict['visual_stim_id']['right'])[0]]=1
+    vis_stim_direction[np.where(vis_stim_direction==trial_dict['visual_stim_id']['no stim'])[0]]=np.nan
+    if any(trial_data.columns == 'visual_stim_difficulty'):
+        vis_val = trial_data['visual_stim_difficulty'].values 
+    else:
+        vis_val = trial_data['visual_stim_id'].values
+    vis_stim_id = np.zeros(len(trial_data))
+    if any(trial_data.columns.values==['visual_gabor_angle']):
+        stim_val = trial_data['visual_gabor_angle'].values
+        stim_val = stim_val[~np.isnan(stim_val)]
+        stim_val = ((stim_val - 45)/45)
+        stim_val = np.flip(np.unique(abs(stim_val)))
+        if len(stim_val)>0:
+            for this_diff in np.flip(np.unique(vis_val)):
+                ind = np.where(vis_val==this_diff)[0]
+                vis_stim_id[ind]=stim_val[int(this_diff)]
+    else:
+        vis_stim_id[vis_val==1]=.8
+        vis_stim_id[vis_val==2]=.6
+        vis_stim_id[vis_val==0]=1
+    vis_stim = vis_stim_direction*vis_stim_id
+
+    trial_data['vis_stim'] = vis_stim
+    trial_data['aud_stim'] = aud_stim
+    target_modalities = np.unique(trial_data['target_modality'].values)
+    if len(target_modalities)==1:
+        if target_modalities[0] == trial_dict['target_modality']['auditory']:
+            trial_data['inpt'] = aud_stim
+        elif target_modalities[0] == trial_dict['target_modality']['visual']:
+            trial_data['inpt'] = vis_stim
+    elif len(target_modalities)==2:
+        trial_data['inpt'] = np.vstack((vis_stim,aud_stim)).T
+    return trial_data
+    
+
 def read_trial_data(nwbFileObj):
     """
     Return trial information and labels map to read enumerated intergers from open nwb file.
@@ -69,9 +116,8 @@ def read_trial_data(nwbFileObj):
     """
     # extract trial_data
     trial_data = nwbFileObj.trials.to_dataframe()
-    # fetch and incorporate stage ****this will be very buggy
-    # stage = np.full(len(trial_data),1)*int(nwbFileObj.lab_meta_data['metadata'].training_stage[1])
-    # trial_data['stage'] = stage
+    stage = nwbFileObj.lab_meta_data['metadata'].training_stage
+    trial_data['stage']=stage
       
     #create dict of trial_labels stored in trials column descriptions
     trial_labels = {}
@@ -81,6 +127,8 @@ def read_trial_data(nwbFileObj):
         if this_map.find('{') != -1:
             this_map = this_map[(this_map.find('{')):]   
             trial_labels[key] = eval(this_map)    
+            
+    trial_data =  get_stim_vals(trial_data,trial_labels)
     return trial_data, trial_labels
 
 def savitzky_golay(y, window_size, order, deriv=0, rate=1):
@@ -214,6 +262,9 @@ def read_behavior_measures(nwbFileObj, speriod=0.001, measures=[], filt=True):
             behavior_measures[key] = filt_data
     behavior_measures['timestamps'] = timestamps
        
+    if np.nanmedian(behavior_measures['running_speed'])<0:
+        behavior_measures['running_speed']=behavior_measures['running_speed']*-1
+    
     return behavior_measures
 
 def read_behavior_events(nwbFileObj, speriod=0.001, events=[]):
@@ -326,6 +377,7 @@ def fetch_trial_beh_measures(trial_data,behavior_measures):
     """
     measures = behavior_measures.columns
     measure_index = measures.values
+    n_measures = len(behavior_measures)-1
     if any(measure_index == 'pupil_size'):
         measure_index[np.where(measure_index == 'pupil_diameter')[0][0]] = 'pupil_diameter'
             
@@ -336,8 +388,10 @@ def fetch_trial_beh_measures(trial_data,behavior_measures):
         start_sample = round(trial_start/.001) ####danger! this assumes ms sampling of behavior measures
         for measures_idx, key in enumerate(measures):
             #write behavior measures from start sample to trial_data
-            trial_data.loc[idx,measure_index[measures_idx]] = behavior_measures.loc[start_sample,key]
-        
+            if start_sample <= n_measures:
+                trial_data.loc[idx,measure_index[measures_idx]] = behavior_measures.loc[start_sample,key]
+            else:
+                trial_data.loc[idx,measure_index[measures_idx]] = np.nan
     return trial_data
 
 def fetch_trial_beh_events(trial_data,behavior_events):

@@ -11,7 +11,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from matplotlib.patches import Rectangle
+import matplotlib.gridspec as gridspec
 import scipy
+from PIL import Image
+import glob
+import os 
 
 cols = ['#ff7f00', '#4daf4a', '#377eb8', '#7E37B8','m','r','c']
 
@@ -55,44 +59,50 @@ def format_choice_behavior_hmm(trial_data, trial_labels, drop_no_response=False,
         trials = trials
         # trial_inds = trials.index#get ALL indices of trial data
             
-    ## build stim values for inpt
-    # build arrays for visual and auditory stimulus identities
-    vis_dir = np.zeros(len(trials))    
-    vis_dir[np.where(trials['visual_stim_id']==trial_labels['visual_stim_id']['left'])[0]]=-1
-    vis_dir[np.where(trials['visual_stim_id']==trial_labels['visual_stim_id']['right'])[0]]=1
-    vis_dir[np.where(trials['visual_stim_id']==trial_labels['visual_stim_id']['no stim'])[0]]=np.nan
-    
-    aud_dir = np.zeros(len(trials))
-    aud_dir[np.where(trials['auditory_stim_id']==trial_labels['auditory_stim_id']['left'])[0]]=-1
-    aud_dir[np.where(trials['auditory_stim_id']==trial_labels['auditory_stim_id']['right'])[0]]=1
-    aud_dir[np.where(trials['auditory_stim_id']==trial_labels['auditory_stim_id']['no stim'])[0]]=np.nan
-  
-    # get array of auditory values
-    aud_val = trials['auditory_stim_difficulty'].values
-
-    # get visual gabor angle if available. if not available, stim values are hard coded as appropriate
-    vis_val = trials['visual_stim_difficulty'].values
-    vis_stim_id = np.zeros(len(trials))
-    if any(trials.columns.values==['visual_gabor_angle']):
-        stim_val = trials['visual_gabor_angle'].values
-        stim_val = stim_val[~np.isnan(stim_val)]
-        stim_val = ((stim_val - 45)/45)
-        stim_val = np.flip(np.unique(abs(stim_val)))
-        if len(stim_val)>0:
-            for this_diff in np.flip(np.unique(vis_val)):
-                ind = np.where(vis_val==this_diff)[0]
-                vis_stim_id[ind]=stim_val[int(this_diff)]
-    else:
-        vis_stim_id[vis_val==1]=.8
-        vis_stim_id[vis_val==2]=.6
-        vis_stim_id[vis_val==0]=1
-    
-    # this assumes target modality is constant, and will only output stim vals for the target modality
-    # getting both values will be necessary for models incorporating distractors
     if trials.iloc[0]['target_modality']==trial_labels['target_modality']['auditory']:
-        stim = aud_val*aud_dir
+        stim = trials['aud_stim'].values
     elif trials.iloc[0]['target_modality']==trial_labels['target_modality']['visual']:
-        stim = vis_stim_id*vis_dir
+        stim = trials['vis_stim'].values
+        
+        
+    # ## build stim values for inpt
+    # # build arrays for visual and auditory stimulus identities
+    # vis_dir = np.zeros(len(trials))    
+    # vis_dir[np.where(trials['visual_stim_id']==trial_labels['visual_stim_id']['left'])[0]]=-1
+    # vis_dir[np.where(trials['visual_stim_id']==trial_labels['visual_stim_id']['right'])[0]]=1
+    # vis_dir[np.where(trials['visual_stim_id']==trial_labels['visual_stim_id']['no stim'])[0]]=np.nan
+    
+    # aud_dir = np.zeros(len(trials))
+    # aud_dir[np.where(trials['auditory_stim_id']==trial_labels['auditory_stim_id']['left'])[0]]=-1
+    # aud_dir[np.where(trials['auditory_stim_id']==trial_labels['auditory_stim_id']['right'])[0]]=1
+    # aud_dir[np.where(trials['auditory_stim_id']==trial_labels['auditory_stim_id']['no stim'])[0]]=np.nan
+  
+    # # get array of auditory values
+    # aud_val = trials['auditory_stim_difficulty'].values
+
+    # # get visual gabor angle if available. if not available, stim values are hard coded as appropriate
+    # vis_val = trials['visual_stim_difficulty'].values
+    # vis_stim_id = np.zeros(len(trials))
+    # if any(trials.columns.values==['visual_gabor_angle']):
+    #     stim_val = trials['visual_gabor_angle'].values
+    #     stim_val = stim_val[~np.isnan(stim_val)]
+    #     stim_val = ((stim_val - 45)/45)
+    #     stim_val = np.flip(np.unique(abs(stim_val)))
+    #     if len(stim_val)>0:
+    #         for this_diff in np.flip(np.unique(vis_val)):
+    #             ind = np.where(vis_val==this_diff)[0]
+    #             vis_stim_id[ind]=stim_val[int(this_diff)]
+    # else:
+    #     vis_stim_id[vis_val==1]=.8
+    #     vis_stim_id[vis_val==2]=.6
+    #     vis_stim_id[vis_val==0]=1
+    
+    # # this assumes target modality is constant, and will only output stim vals for the target modality
+    # # getting both values will be necessary for models incorporating distractors
+    # if trials.iloc[0]['target_modality']==trial_labels['target_modality']['auditory']:
+    #     stim = aud_val*aud_dir
+    # elif trials.iloc[0]['target_modality']==trial_labels['target_modality']['visual']:
+    #     stim = vis_stim_id*vis_dir
     
     ## this only works on target trials!! This should be created during labview data collection in the future
     # create true_choice array. 
@@ -297,6 +307,19 @@ def get_posterior_probs(hmm, true_choices, inpts, hmm_trials, occ_thresh = .8):
     
     #update hmm_trials with state probabilities
     for sess_ind in range(len(hmm_trials)):
+        
+        columns = hmm_trials[sess_ind].columns
+        del_cols = []        
+        for col in columns :
+            if col[:6]=='state_':
+                 del_cols.append(col)
+            
+        # hmm_trials[sess_ind].drop[del_cols[0]]
+        # test = hmm_trials[sess_ind]
+        hmm_trials[sess_ind].drop(del_cols, axis=1, inplace=True)
+        
+        hmm_trials[sess_ind]['inpt'] = inpts[sess_ind][:,0]
+        hmm_trials[sess_ind]['choice'] = true_choices[sess_ind]
         session_posterior_prob = posterior_probs[sess_ind] 
         np.max(session_posterior_prob,axis=1)
         trial_max_prob = np.max(session_posterior_prob, axis = 1)
@@ -307,6 +330,83 @@ def get_posterior_probs(hmm, true_choices, inpts, hmm_trials, occ_thresh = .8):
             hmm_trials[sess_ind]['state_' + str(state+1) +'_prob'] = session_posterior_prob[:,state]
 
     return posterior_probs, hmm_trials
+
+
+def get_psychos(hmm_trials):  
+    all_trials = pd.DataFrame()
+    for trials in hmm_trials:
+        all_trials = all_trials.append(trials)
+    
+    psycho = np.full((int(np.unique(all_trials['hmm_state'].dropna()).max()+1),3,len(np.unique(all_trials['inpt']))),np.nan)
+    for state in np.unique(all_trials['hmm_state'].dropna()):
+        for ind, choice in enumerate(np.unique(all_trials['choice'])):
+            for ind2, this_inpt in enumerate(np.unique(all_trials['inpt'])):
+                state_trials=len(all_trials.query("hmm_state==@state and inpt==@this_inpt"))
+                if state_trials>0:
+                    psycho[int(state),ind,ind2]=len(all_trials.query("choice==@choice and hmm_state==@state and inpt==@this_inpt"))/state_trials
+    
+    xvals = np.unique(all_trials['inpt'])
+    return psycho, xvals   
+
+
+def compare_psychos(psycho1,psycho2):
+    all_similarity=[]
+    for state in psycho2:
+        similarity=[]
+        for state2 in psycho1:
+            similarity.append(np.sum(abs(state-state2)))
+        all_similarity.append(similarity)
+    return np.array(all_similarity)
+
+
+def permute_hmm(hmm, hmm_trials):
+    perfect_psychos = [[[1, 1, 1, 0, 0, 0],
+                     [0, 0, 0, 1, 1, 1],
+                     [0, 0, 0, 0, 0, 0]],
+                   [[1, 1, 1, 1, 1, 1],
+                    [0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0]],
+                   [[0, 0, 0, 0, 0, 0],
+                    [1, 1, 1, 1, 1, 1],
+                    [0, 0, 0, 0, 0, 0]],
+                   [[0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0],
+                    [1, 1, 1, 1, 1, 1]]]
+    perfect_psychos = np.array(perfect_psychos)
+    
+    psycho,_ = get_psychos(hmm_trials)
+    
+    perfect_psychos = np.zeros((3,psycho.shape[1],psycho.shape[2]))
+    perfect_psychos[0,0,:int(perfect_psychos.shape[2]/2)]=1
+    perfect_psychos[0,1,int(perfect_psychos.shape[2]/2):]=1
+    perfect_psychos[1,0,:]=1
+    perfect_psychos[2,1,:]=1
+    # perfect_psychos[3,2,:]=1
+    
+    # if np.isnan(psycho).any():
+    #     del_ind = np.unique(np.where(np.isnan(psycho))[2])
+    #     psycho = np.delete(psycho,del_ind,axis=2)
+    similarity = compare_psychos(perfect_psychos,psycho)
+    state_similarity = np.nanargmin(similarity,axis=0)
+    
+    if len(state_similarity) < psycho.shape[0]:
+        extra_states = np.delete(np.arange(psycho.shape[0]), state_similarity)
+        state_similarity = np.append(state_similarity,extra_states)
+    
+    if len(np.unique(state_similarity)) != len(state_similarity):
+        best_psycho_ind = np.argmin(similarity[:,0])
+        state_options = np.arange(similarity.shape[0])
+        state_options = np.delete(state_options,best_psycho_ind)
+        state_similarity = np.concatenate((np.full(1,best_psycho_ind),state_options))
+        
+    perm = state_similarity
+    # if len(perm)<len(similarity):
+    #     missing_state = list(set(np.array(range(similarity.shape[0])))- set(perm))
+    #     perm = np.append(perm,missing_state)
+        
+    hmm.permute(perm)
+    
+    return hmm      
 
 def plot_GLM_weights(subject, hmm,save_folder=''):
        ## plot results
@@ -347,6 +447,7 @@ def plot_GLM_weights(subject, hmm,save_folder=''):
             
     if save_folder!='':
         plt.savefig(save_folder + subject +'_GLM_Weights.png')
+        plt.close()
 
 
 def plot_session_posterior_probs(subject, hmm,true_choices,inpts, save_folder=''):
@@ -371,7 +472,7 @@ def plot_session_posterior_probs(subject, hmm,true_choices,inpts, save_folder=''
         plt.title('session ' + str(sess_id))
         if save_folder!='':
             plt.savefig(save_folder + subject + f" Pstate_session{sess_id}.png")
-        plt.show()
+            plt.close()
 
 def plot_transition_matrix(subject, hmm, save_folder=''):
     # plot state transition matrix
@@ -392,6 +493,7 @@ def plot_transition_matrix(subject, hmm, save_folder=''):
     plt.title("transition matrix", fontsize = 20)
     if save_folder!='':
         plt.savefig(save_folder + subject +" transition_matrix.png")
+        plt.close()
 
 
 def plot_state_occupancy(subject, hmm_trials, save_folder=''):
@@ -419,17 +521,28 @@ def plot_state_occupancy(subject, hmm_trials, save_folder=''):
     plt.title(subject + ' State Occupancy', fontsize=15)
     if save_folder !='':
         plt.savefig(save_folder + subject + "_state_occupancy.png")    
+        plt.close()
     
     plt.figure()
     session_state_occupancy = pd.DataFrame(columns=xs)
+    lg=[]
     for idx, trials in enumerate(hmm_trials):
-        for state in xs:
+        for state in xs[:-1]:
             session_state_occupancy.loc[idx,state] = len(np.where(trials["hmm_state"] == state)[0])/len(trials)
-    for state in session_state_occupancy.columns:
+    session_state_occupancy.iloc[:,-1] = 1-np.sum(session_state_occupancy.iloc[:,:-1],axis=1)
+    for state in session_state_occupancy.columns[:-1]:
         plt.plot(session_state_occupancy[state],color=cols[state])
+        lg.append('state '+str(state+1))
+    plt.plot(session_state_occupancy.iloc[:,-1],'k:')
+    lg.append('undecided')
+    plt.title('state occupancy by session')
+    plt.ylabel('p(state)')
+    plt.xlabel('session')
+    plt.legend(lg)
 
     if save_folder !='':
         plt.savefig(save_folder + subject + "_state_occupancy_by_session.png")
+        plt.close()
 
 def plot_state_posteriors_CDF(subject, posterior_probs, save_folder=''):
     global cols     
@@ -452,170 +565,33 @@ def plot_state_posteriors_CDF(subject, posterior_probs, save_folder=''):
     plt.title(subject + '\nMax State Posterior Values', fontsize = 20)
     if save_folder !='':
         plt.savefig(save_folder +  subject + "_max_state_Posterior_value.png")   
+        plt.close()
+     
+                
+def plot_state_psychometrics(subject,hmm_trials,save_folder=''):
+    psycho, stim_vals = get_psychos(hmm_trials)
+    lines =['--',':','-']
+    symbol = ['<','>','s']
+    symb_plot=[]
+    
+    plt.figure(figsize=(10, 6))
+    for idx in range(psycho.shape[0]):
+        plt.subplot(2,round((psycho.shape[0]+1)/2),idx+1)
+        for idx2, psych in enumerate(psycho[idx,:,:]):
+            symb_plot.append(plt.plot(stim_vals,psych.T,symbol[idx2],color=cols[idx])[0])    
+            plt.plot(stim_vals,psych.T,lines[idx2],color=cols[idx])
+        if idx==0 or idx==3:
+            plt.ylabel('Choice probability',fontsize=12)
+        if  [3,4,5].count(idx)>0:
+            plt.xlabel('Stimulus weight',fontsize=12)
+        if idx==0:
+            plt.legend(symb_plot,['left','right','miss'])
+    plt.suptitle(subject + ' psychometrics by state',fontsize=20)
 
-
-def plot_state_psychometrics(subject, hmm, inpts,true_choices,save_folder=''):
-    #generate psychometrics per state
-    #concatenate inpts and choices
-    
-    inpts_concat = np.concatenate(inpts)
-    trial_inpts = inpts_concat[:,0]
-    choice_concat = np.concatenate(true_choices)
-    global cols
-    posterior_probs = [hmm.expected_states(data=data, input=inpt)[0]
-               for data, inpt
-               in zip(true_choices, inpts)]
-    
-    posterior_probs_concat = np.concatenate(posterior_probs)
-    # get state with maximum posterior probability at particular trial:
-    ind = np.where(posterior_probs_concat>.8)[0]
-    state =  np.where(posterior_probs_concat>.8)[1]
-    state_max_posterior = np.full(len(posterior_probs_concat),np.nan)
-    state_max_posterior[ind] = state
-    # state_max_posterior = np.argmax(posterior_probs_concat, axis = 1)
-    num_states = hmm.observations.params.shape[0]
-
-    state_idx = np.unique(state_max_posterior)
-    state_idx = state_idx[~np.isnan(state_idx)]
-    state_inpt_l_choice = pd.DataFrame(data=[],index=state_idx, columns = np.unique(trial_inpts))
-    state_inpt_r_choice = pd.DataFrame(data=[],index=state_idx, columns = np.unique(trial_inpts))
-    state_inpt_n_choice = pd.DataFrame(data=[],index=state_idx, columns = np.unique(trial_inpts))
-    trial_n = pd.DataFrame(data=[],index=state_idx, columns = np.unique(trial_inpts))
-    for iState in range(0,num_states):
-            state_ind = np.where(state_max_posterior == iState)[0].astype(int)
-            posterior_probs_concat>.8
-            state_ind = np.where(state_max_posterior == iState)[0].astype(int)
-            state_inpts = trial_inpts[state_ind]
-            state_choices = choice_concat[state_ind]
-            for iInp in np.unique(state_inpts):
-                these_trials = np.where(state_inpts == iInp)[0]
-                #if iInp > 0:
-                    #correct_choice = 1
-                    #mult=1
-                #if iInp <0:
-                    #correct_choice = 0
-                    #mult=-1
-                #state_inpt_choice.loc[iState,iInp] = len(np.where(state_choices[these_trials]==correct_choice)[0])/len(these_trials)*mult
-                state_inpt_l_choice.loc[iState,iInp] = len(np.where(state_choices[these_trials]==0)[0])/len(these_trials)
-                state_inpt_r_choice.loc[iState,iInp] = len(np.where(state_choices[these_trials]==1)[0])/len(these_trials)
-                state_inpt_n_choice.loc[iState,iInp] = len(np.where(state_choices[these_trials]==2)[0])/len(these_trials)
-                trial_n.loc[iState,iInp] =len(these_trials)
-    
-    
-    for iInp in np.unique(trial_inpts):
-        these_trials = np.where(trial_inpts == iInp)[0]
-        state_inpt_l_choice.loc['all_trials',iInp] = len(np.where(choice_concat[these_trials]==0)[0])/len(these_trials)
-        state_inpt_r_choice.loc['all_trials',iInp] = len(np.where(choice_concat[these_trials]==1)[0])/len(these_trials)
-        state_inpt_n_choice.loc['all_trials',iInp] = len(np.where(choice_concat[these_trials]==2)[0])/len(these_trials)
-        trial_n.loc['all_trials',iInp] = len(these_trials)
-        
-        
-    columns = state_inpt_l_choice.columns
-    index = state_inpt_l_choice.index
-    hcols = int(len(columns)/2)
-    state_inpt_hits = pd.DataFrame(data=[],index=index, columns = columns)
-    state_inpt_errors = pd.DataFrame(data=[],index=index, columns = columns)
-    state_inpt_misses = pd.DataFrame(data=[],index=index, columns = columns)
-    
-    state_inpt_hits.iloc[:,:hcols] = state_inpt_l_choice.iloc[:,:hcols]
-    state_inpt_hits.iloc[:,hcols:] = state_inpt_r_choice.iloc[:,hcols:]
-    
-    state_inpt_errors.iloc[:,:hcols] = state_inpt_r_choice.iloc[:,:hcols]
-    state_inpt_errors.iloc[:,hcols:] = state_inpt_l_choice.iloc[:,hcols:]
-    state_inpt_misses.iloc[:,:] = state_inpt_n_choice.iloc[:,:]
-        
-    # actual_inpts = [-.98, -.63, -.44, .44, .63, .98]
-    # state_inpt_choice.columns = actual_inpts
-    global cols
-    # states = state_inpt_hits.index
-    # for idx,state in enumerate(states):
-    #     plt.plot(state_inpt_hits.loc[state,:],color=cols[idx],linewidth=3,marker='o')    
-    #     plt.plot(state_inpt_errors.loc[state,:],'--',color=cols[idx])    
-    #     plt.plot(state_inpt_misses.loc[state,:],':',color=cols[idx])    
-    
-    if len(np.unique(choice_concat))<3:
-        plt.figure()
-        plt.xlabel('Stimulus')
-        plt.ylabel('Right Choice Probability')
-        plt.title(subject + ' Performance by State')
-        for idx in state_inpt_r_choice.index:
-            if idx == 'all_trials':
-                plt.plot(state_inpt_r_choice.columns,state_inpt_r_choice.loc[idx,:].values,'k--',marker='o')
-            if idx != 'all_trials':
-                plt.plot(state_inpt_r_choice.columns,state_inpt_r_choice.loc[idx,:].values,marker='o', color=cols[idx])   
-    elif len(np.unique(choice_concat))==3:
-        states = state_inpt_hits.index
-        n_columns = round(len(states)/2)+len(states)%2
-        
-        plt.figure(figsize=(4*n_columns, 6))
-        for idx,state in enumerate(states):
-            plt.subplot(2, n_columns, idx+1)
-            plt.plot(state_inpt_hits.loc[state,:],color=cols[idx],marker='o')    
-            plt.plot(state_inpt_errors.loc[state,:],'--',color=cols[idx],marker='^')    
-            plt.plot(state_inpt_misses.loc[state,:],':',color=cols[idx],marker='s')   
-            if state != 'all_trials':
-                plt.title('State ' + str(state+1))
-            else:
-                plt.title('All Trials')
-            plt.legend(['Hit','Error','Miss'])
-            plt.ylabel('Probability')
-            plt.ylim([-.02,1.02])
-            plt.xticks([-1,-.5,0,.5,1])
-        plt.suptitle(subject + ' Performance by State',fontsize=20)
-        if save_folder !='':
-            plt.savefig(save_folder + subject + "_performance_by_state.png")
-        states = state_inpt_l_choice.index
-        plt.figure(figsize=(4*n_columns, 6))
-        for idx,state in enumerate(states): 
-            plt.subplot(2, n_columns, idx+1)
-            plt.plot(state_inpt_l_choice.loc[state,:],color=cols[idx],marker='<')    
-            plt.plot(state_inpt_r_choice.loc[state,:],'--',color=cols[idx],marker='>')    
-            plt.plot(state_inpt_n_choice.loc[state,:],':',color=cols[idx],marker='s') 
-            if state != 'all_trials':
-                plt.title('State ' + str(state+1))
-            else:
-                plt.title('All Trials')
-            plt.legend(['L Choice','R Choice','Miss'])
-            plt.ylabel('Probability')
-            plt.ylim([-.02,1.02])
-            plt.xticks([-1,-.5,0,.5,1])
-        plt.suptitle(subject + ' Choice by State',fontsize=20)
-        if save_folder !='':
-            plt.savefig(save_folder + subject + "_choice_by_state.png")
-        
-        plt.figure(figsize=(12, 6))
-        L = plt.subplot(1, 3, 1)
-        for idx, state in enumerate(state_inpt_l_choice.index):
-            if state == 'all_trials':
-                L.plot(state_inpt_l_choice.columns,state_inpt_l_choice.loc[state,:].values,'k--',marker='o')
-            else:
-                L.plot(state_inpt_l_choice.columns,state_inpt_l_choice.loc[state,:].values,marker='o', color=cols[idx])
-            plt.title('Weights for L')
-            plt.ylabel('Probability')
-            plt.legend(['State 1','State 2','State 3','All Trials'])
-            plt.ylim([-0.01,1.01])
-            
-        R = plt.subplot(1, 3, 2)
-        for idx, state in enumerate(state_inpt_l_choice.index):
-            if state == 'all_trials':
-                R.plot(state_inpt_r_choice.columns,state_inpt_r_choice.loc[state,:].values,'k--',marker='o')
-            else:
-                R.plot(state_inpt_r_choice.columns,state_inpt_r_choice.loc[state,:].values,marker='o', color=cols[idx])
-            plt.title('Weights for R')
-            plt.ylim([-0.01,1.01])
-
-        M = plt.subplot(1, 3, 3)
-        for idx, state in enumerate(state_inpt_l_choice.index):
-            if state == 'all_trials':
-                M.plot(state_inpt_n_choice.columns,state_inpt_n_choice.loc[state,:].values,'k--',marker='o')
-            else:
-                M.plot(state_inpt_n_choice.columns,state_inpt_n_choice.loc[state,:].values,marker='o', color=cols[idx])
-            plt.title('Weights for Miss')
-            plt.ylim([-0.01,1.01])
-            plt.suptitle(subject + ' Performance by State',fontsize=20)
     if save_folder !='':
-        plt.savefig(save_folder + subject + "_performance_weight.png")
-    
+        plt.savefig(save_folder + subject + "_choice_by_state.png")        
+        plt.close()
+        
 def plot_dwell_times(subject, hmm_trials, save_folder = ''):
     global cols
     session_transitions=[]
@@ -671,55 +647,91 @@ def plot_dwell_times(subject, hmm_trials, save_folder = ''):
     
     if save_folder != '':
         plt.savefig(save_folder +  subject + "_state_dwelltime_distribution.png")       
+        plt.close()
         
     return session_transitions
-        
-    
-def plot_session_summaries(subject, hmm_trials,nwbfilepaths,save_folder =''):
+
+
+
+def plot_session_summaries(subject, hmm_trials, nwbfilepaths,save_folder ='', measure_hist = True):
     global cols
     for session, these_trials in enumerate(hmm_trials):
         columns = these_trials.columns
         # plt.figure()    
         fig = plt.figure(figsize=(25, 12), facecolor='w', edgecolor='k')
+        ax = fig.add_subplot(111)
+        gs = gridspec.GridSpec(1,4)
+        if measure_hist:
+            ax.set_position(gs[0:3].get_position(fig))        
         plt.plot(these_trials['state_1_prob'].values,cols[0],linewidth=3)
-        plt.plot(these_trials['state_2_prob'].values,cols[1],linewidth=3)
+        ax.plot(these_trials['state_2_prob'].values,cols[1],linewidth=3)
         lg = ['state 1','state 2']
         if any(columns=='state_3_prob'):
-            plt.plot(these_trials['state_3_prob'].values,cols[2],linewidth=3)
+            ax.plot(these_trials['state_3_prob'].values,cols[2],linewidth=3)
             lg.append('state 3')
         if any(columns=='state_4_prob'):
-            plt.plot(these_trials['state_4_prob'].values,cols[3],linewidth=3)
+            ax.plot(these_trials['state_4_prob'].values,cols[3],linewidth=3)
             lg.append('state 4')
         if any(columns=='state_5_prob'):
-            plt.plot(these_trials['state_5_prob'].values,cols[4],linewidth=3)
+            ax.plot(these_trials['state_5_prob'].values,cols[4],linewidth=3)
             lg.append('state 5')
         if any(columns=='state_6_prob'):
-            plt.plot(these_trials['state_6_prob'].values,cols[5],linewidth=3)
+            ax.plot(these_trials['state_6_prob'].values,cols[5],linewidth=3)
             lg.append('state 6')
-        pupil = these_trials['pupil_diameter']
-        pupil = pupil/2+.5
-        plt.scatter(range(len(these_trials)),pupil,color='k')
-        run = these_trials['running_speed']
-        run = run/max(run)/6+.33
-        plt.scatter(range(len(these_trials)),run,color='k',marker = ">")
-        whisk = these_trials['whisker_energy']
-        whisk = whisk/max(whisk)/6+.16
-        plt.scatter(range(len(these_trials)),whisk,color='k',marker = "s")
-        rt = these_trials['reaction_time']
-        rt = rt/np.nanmax(rt)/6
-        plt.scatter(range(len(these_trials)),rt,color='k',marker = "*")
-        for measure in ['pupil','wheel','whisk']:
-            lg.append(measure)
-        plt.legend(lg)
+        if 'pupil_diameter' in columns:
+            pupil = these_trials['pupil_diameter']
+            pupil = pupil/2+.5
+            ax.scatter(range(len(these_trials)),pupil,color='k')
+            lg.append('pupil')
+        if 'running_speed' in columns:
+            run = these_trials['running_speed']
+            run = run/max(run)/6+.33
+            ax.scatter(range(len(these_trials)),run,color='k',marker = ">")
+            lg.append('wheel')
+
+        if 'whisker_energy' in columns:
+            whisk = these_trials['whisker_energy']
+            whisk = whisk/max(whisk)/6+.16
+            ax.scatter(range(len(these_trials)),whisk,color='k',marker = "s")
+            lg.append('whisk')
+
+        if 'reaction_time' in columns:
+            rt = these_trials['reaction_time']
+            rt = rt/np.nanmax(rt)/6
+            ax.scatter(range(len(these_trials)),rt,color='k',marker = "*")
+            lg.append('reaction time')
+    
+        ax.legend(lg)
         plt.xlabel('Trial',fontsize = 30)
-        plt.title(nwbfilepaths[session],fontsize=17)
+        plt.ylabel('p(state)')
+        plt.suptitle(these_trials['stage'].iloc[0] + '    ' + nwbfilepaths[session],fontsize=17)
+        
+        if measure_hist:
+            gs = gridspec.GridSpec(8,4)
+            glist = [7,15,23,31]
+            hist_lim = [1,.5,1,2500]
+            hist_bins = [.025,.01,.025,50]
+            xlabels = ['pupil diameter (% max)','running speed (m/s)','whisker energy (a.u.)','reaction time (ms)']
+            for i,measure in enumerate(['pupil_diameter', 'running_speed', 'whisker_energy', 'reaction_time']):
+                if measure in columns:
+                    ax = fig.add_subplot(gs[glist[i]])
+                    for state in np.unique(these_trials['hmm_state'].dropna()):
+                        measure_data = these_trials.query('hmm_state == @state')[measure]
+                        hist_y,hist_x = np.histogram(measure_data,bins = np.arange(0,hist_lim[i],hist_bins[i]))
+                        ax.plot(hist_x[1:],hist_y/sum(hist_y),color=cols[int(state)])
+                        # plt.title(measure)
+                        plt.xlabel(xlabels[i])
+                    plt.ylabel('fraction trials')
+            
         if save_folder != '':
             plt.savefig(save_folder +  subject + "_session_" + str(session) + "_summary.png")   
+            plt.close()
 
 
 def plot_session_summaries_patch(subject, hmm_trials,dwell_times,nwbfilepaths,save_folder =''):
     global cols
     for session, these_trials in enumerate(hmm_trials):
+        columns = these_trials.columns
         hand=[]
         lg=[]
         dwells = dwell_times[session]
@@ -732,37 +744,154 @@ def plot_session_summaries_patch(subject, hmm_trials,dwell_times,nwbfilepaths,sa
             for idx in range(0,int(max(dwells['state']))+1):
                 hand.append(ax.add_patch(Rectangle((0,0),0,0,color=cols[idx],alpha=.2)))
                 lg.append('state ' + str(idx+1))
-        pupil = these_trials['pupil_diameter']
-        pupil = pupil/2+.5
-        hand.append(plt.scatter(range(len(these_trials)),pupil,color='k'))
-        run = these_trials['running_speed']
-        run = run/max(run)/6+.33
-        hand.append(plt.scatter(range(len(these_trials)),run,color='k',marker = ">"))
-        whisk = these_trials['whisker_energy']
-        whisk = whisk/max(whisk)/6+.16
-        hand.append(plt.scatter(range(len(these_trials)),whisk,color='k',marker = "s"))
-        rt = these_trials['reaction_time']
-        rt = rt/np.nanmax(rt)/6
-        hand.append(plt.scatter(range(len(these_trials)),rt,color='k',marker = "*"))
-        for measure in ['pupil','wheel','whisk']:
-            lg.append(measure)
+        if 'pupil_diameter' in columns:
+            pupil = these_trials['pupil_diameter']
+            pupil = pupil/2+.5
+            hand.append(plt.scatter(range(len(these_trials)),pupil,color='k'))
+            lg.append('pupil')
+        if 'running_speed' in columns:
+            run = these_trials['running_speed']
+            run = run/max(run)/6+.33
+            hand.append(plt.scatter(range(len(these_trials)),run,color='k',marker = ">"))
+            lg.append('wheel')
+        if 'whisker_energy' in columns:
+            whisk = these_trials['whisker_energy']
+            whisk = whisk/max(whisk)/6+.16
+            hand.append(plt.scatter(range(len(these_trials)),whisk,color='k',marker = "s"))
+            lg.append('whisk')
+        if 'reaction_time' in columns:
+            rt = these_trials['reaction_time']
+            rt = rt/np.nanmax(rt)/6
+            hand.append(plt.scatter(range(len(these_trials)),rt,color='k',marker = "*"))
+            lg.append('reaction time')
+
         plt.legend(hand,lg)
         plt.xlabel('Trial',fontsize = 30)
         plt.title(nwbfilepaths[session],fontsize=17)
         if save_folder != '':
             plt.savefig(save_folder +  subject + "_session_" + str(session) + "_summary.png")         
+            plt.close()
          
 def mean_confidence_interval(data, confidence=0.95):
     a = 1.0 * np.array(data)
+    a = a[a==a]
     n = len(a)
     m, se = np.mean(a), scipy.stats.sem(a)
     ci = se * scipy.stats.t.ppf((1 + confidence) / 2., n-1)
     return m, ci   
          
+def plot_locomotion_by_state(subject, hmm_trials, save_folder = ''):
+    cutoff = .01
+    all_trials = pd.DataFrame()
+    for trials in hmm_trials:
+        all_trials = all_trials.append(trials)
+        
+    #by session
+    locomotion_data = pd.DataFrame(columns = np.unique(all_trials['hmm_state'].dropna()))
+    n_session=[]
+    for i, trials in enumerate(hmm_trials):
+        for state in np.unique(trials['hmm_state'].dropna()):
+            run_vals = trials.query('hmm_state == @state')['running_speed']
+            locomotion_data.loc[i,state] = len(np.where(run_vals>cutoff)[0])/len(run_vals)
+       
+
+    
+    plt.figure()
+    ax = plt.subplot()
+    x_lb=[]
+    for state in locomotion_data.columns:
+        this_data = [locomotion_data[state].dropna().values.astype(np.float)]
+        n_session=len(this_data[0])
+        x_lb.append('state ' + str(int(state+1)) + '\nn = ' + str(n_session))
+        parts = ax.violinplot(this_data,[int(state)],showmeans=False, showmedians=False, showextrema=False)
+        for pc in parts['bodies']:
+            pc.set_facecolor(cols[int(state)])
+            pc.set_edgecolor('black')
+            pc.set_alpha(.7)
+    
+            
+            
+    # plt.figure()
+    for state in locomotion_data.columns:
+        this_data = locomotion_data[state].dropna()
+        # plt.scatter(state + np.random.rand(len(this_data))/2-.25,this_data, color = cols[int(state)], alpha = .4,s=10)
+        plt.scatter(state + np.random.rand(len(this_data))/2-.25,this_data, color = 'k',s=10,alpha=.7)
+        plt.scatter(state,np.mean(this_data),color = 'k', marker = 's',s=50)
+        plt.errorbar(state,np.mean(this_data),scipy.stats.sem(this_data),color = 'k',linewidth=3)
+        # plt.errorbar(state,np.mean(this_data),np.std(this_data),color = 'k',linewidth=1)
+    
+    plt.xticks(ticks = locomotion_data.columns,labels = x_lb)
+    plt.ylabel('proportion trials locomoting')
+    plt.title(subject + ' locomotion probabiltiy by session')
+    plt.ylim([0,1])
+    if save_folder != '':
+        plt.savefig(save_folder +  subject + "_running_trials_violin.png")         
+        plt.close()
+        
+    # plt.figure()
+    # for state in locomotion_data.columns:
+    #     this_data = locomotion_data[state].dropna()
+    #     plt.scatter(state + np.random.rand(len(this_data))/4-.25,this_data, color = cols[int(state)], alpha = .4,s=15)
+    #     # plt.scatter(state + np.random.rand(len(this_data))/2-.25,this_data, color = 'k',s=10)
+    #     plt.scatter(state,np.mean(this_data),color = 'k', marker = 's')
+    #     plt.errorbar(state,np.mean(this_data),scipy.stats.sem(this_data),color = 'k',linewidth=3)
+    #     plt.errorbar(state,np.mean(this_data),np.std(this_data),color = 'k',linewidth=1)            
+    
+    # if save_folder != '':
+    #     plt.savefig(save_folder +  subject + "_running_trials_scatter.png")         
+    #     plt.close()
+
+def plot_whisk_by_state(subject, hmm_trials, save_folder = ''):
+    cutoff = .15
+    all_trials = pd.DataFrame()
+    for trials in hmm_trials:
+        all_trials = all_trials.append(trials)
+        
+    #by session
+    whisk_data = pd.DataFrame(columns = np.unique(all_trials['hmm_state'].dropna()))
+    n_session=[]
+    for i, trials in enumerate(hmm_trials):
+        for state in np.unique(trials['hmm_state'].dropna()):
+            whisk_vals = trials.query('hmm_state == @state')['whisker_energy']
+            whisk_data.loc[i,state] = len(np.where(whisk_vals>cutoff)[0])/len(whisk_vals)
+       
+
+    
+    plt.figure()
+    ax = plt.subplot()
+    x_lb=[]
+    for state in whisk_data.columns:
+        this_data = [whisk_data[state].dropna().values.astype(np.float)]
+        n_session=len(this_data[0])
+        x_lb.append('state ' + str(int(state+1)) + '\nn = ' + str(n_session))
+        parts = ax.violinplot(this_data,[int(state)],showmeans=False, showmedians=False, showextrema=False)
+        for pc in parts['bodies']:
+            pc.set_facecolor(cols[int(state)])
+            pc.set_edgecolor('black')
+            pc.set_alpha(.7)
+    
+            
+            
+    # plt.figure()
+    for state in whisk_data.columns:
+        this_data = whisk_data[state].dropna()
+        # plt.scatter(state + np.random.rand(len(this_data))/2-.25,this_data, color = cols[int(state)], alpha = .4,s=10)
+        plt.scatter(state + np.random.rand(len(this_data))/2-.25,this_data, color = 'k',s=10,alpha=.7)
+        plt.scatter(state,np.mean(this_data),color = 'k', marker = 's',s=50)
+        plt.errorbar(state,np.mean(this_data),scipy.stats.sem(this_data),color = 'k',linewidth=3)
+        # plt.errorbar(state,np.mean(this_data),np.std(this_data),color = 'k',linewidth=1)
+    
+    plt.xticks(ticks = whisk_data.columns,labels = x_lb)
+    plt.ylabel('proportion trials whisking')
+    plt.title(subject + ' whisk probabiltiy by session')
+    plt.ylim([0,1])
+    if save_folder != '':
+        plt.savefig(save_folder +  subject + "_whisk_trials_violin.png")         
+        plt.close()
+
 def plot_measures_by_state(subject, hmm_trials, save_folder = ''):
 
     global cols
-    
     xlabels = {'pupil_diameter': 'Pupil Diameter (% max)',
                'running_speed': 'Wheel Speed (m/s)',
                'whisker_energy': 'Whisker Motion Energy (a.u)',
@@ -775,12 +904,12 @@ def plot_measures_by_state(subject, hmm_trials, save_folder = ''):
              'hmm_state':''}
     
     measures = pd.DataFrame(columns=['pupil_diameter','running_speed','whisker_energy','reaction_time','hmm_state'])
-    
     for trials in hmm_trials:
-        measures = measures.append(trials[measures.columns])
-    
+        concat_measures = np.append(trials.columns.values, measures.columns.values)
+        value, count = np.unique(concat_measures,return_counts = True)
+        these_measures = value[count>1]
+        measures = measures.append(trials[these_measures])
     states = np.unique(measures['hmm_state'].dropna())
-    
     legends =[]
     for state in states:
         n= len(measures.query('hmm_state==@state'))
@@ -789,10 +918,22 @@ def plot_measures_by_state(subject, hmm_trials, save_folder = ''):
     for measure in measures.columns:
         plt.figure()
         this_data = measures[measure].dropna()
+        
+        if measure == 'running_speed':
+            cutoff = .01
+        elif measure == 'whisker_energy':
+            cutoff = .15
+        else:
+            cutoff = np.nan
+                    
         bins = np.arange(min(this_data),max(this_data),np.std(this_data)/5)
         for state in states:
-            measure_data = measures.query('hmm_state == @state')[measure]
-            hist_data = np.histogram(measures.query('hmm_state == @state')[measure],bins=bins)
+            data_for_hist = measures.query('hmm_state == @state')[measure].values
+            # if ~np.isnan(cutoff):
+            #     active = len(np.where(data_for_hist>cutoff)[0])/len(data_for_hist)
+            #     passive = 1-active
+            #     data_for_hist = data_for_hist[np.where(data_for_hist>cutoff)[0]]  
+            hist_data = np.histogram(data_for_hist,bins=bins)
             plt.plot(hist_data[1][:-1],hist_data[0]/sum(hist_data[0]),color=cols[int(state)],linewidth=3)
         plt.title(measure)
         plt.title(subject + '\n' + titles[measure] + ' distribution by state',fontsize=15)
@@ -801,12 +942,42 @@ def plot_measures_by_state(subject, hmm_trials, save_folder = ''):
         plt.legend(legends)
         if save_folder !='':
             plt.savefig(save_folder + subject +'_' + measure +"_by_state.png")
+            plt.close()
             
+      
         plt.figure()
-        # all_data={}
-        for state in states:
-            measure_data = measures.query('hmm_state == @state')[measure].dropna()
-            m, ci = mean_confidence_interval(measure_data,.95)
+        for state in states:            
+            if measure == 'running_speed':
+                cutoff = .01
+            elif measure == 'whisker_energy':
+                cutoff = .15
+            else:
+                cutoff = np.nan
+   
+            data_for_stat = measures.query('hmm_state == @state')[measure].values
+            if ~np.isnan(cutoff):
+                active = len(np.where(data_for_stat>cutoff)[0])/len(data_for_stat)
+                passive = 1-active
+                plt.bar(state,active,width=.25)
+                plt.bar(state+.3,passive,width=.25)
+        
+        plt.figure()
+        for state in states: 
+            if measure == 'running_speed':
+                cutoff = .01
+            elif measure == 'whisker_energy':
+                cutoff = .15
+            else:
+                cutoff = np.nan
+                    
+            data_for_stat = measures.query('hmm_state == @state')[measure].dropna().values
+            if ~np.isnan(cutoff):
+                active = len(np.where(data_for_stat>cutoff)[0])/len(data_for_stat)
+                passive = 1-active
+                data_for_stat = data_for_stat[np.where(data_for_stat>cutoff)[0]]  
+            
+            
+            m, ci = mean_confidence_interval(data_for_stat,.95)
             plt.plot(state,m,'s',color=cols[int(state)])
             plt.errorbar(state,m,ci,color=cols[int(state)])
         plt.xticks(range(0,len(states)),range(1,len(states)+1))
@@ -820,3 +991,256 @@ def plot_measures_by_state(subject, hmm_trials, save_folder = ''):
         plt.title(subject + '\n' + titles[measure] + ' statistics by state',fontsize=15)
         if save_folder !='':
             plt.savefig(save_folder + subject +'_' + measure +"_stats.png")
+            plt.close()
+            
+            
+def state_measures_by_session_95ci(subject, hmm_trials, save_folder = ''):
+    measures = pd.DataFrame(columns=['pupil_diameter','running_speed','whisker_energy','reaction_time','hmm_state','session'])
+    
+    for idx, trials in enumerate(hmm_trials):
+        trials['session']=idx
+        measures = measures.append(trials[measures.columns])
+                
+    states = np.unique(measures['hmm_state'].dropna())
+    plt.figure()
+    
+    for measure in list(measures.columns[:-2]):
+        all_stats = pd.DataFrame(columns=['mean','error','state'])
+        stats = pd.DataFrame(columns=['mean','error','state'])
+        for state in states:
+            for session in np.unique(measures['session']):
+                    # measure = measures.columns[1]
+                    this_data = measures.query('hmm_state == @state and session == @session')[measure].values
+                    m, ci = mean_confidence_interval(this_data, confidence=0.95)
+                    # plt.errorbar(session,m,ci,color=cols[int(state)])
+                    # plt.scatter(session,m,color=cols[int(state)])
+                    stats.loc[session,'mean']=m
+                    stats.loc[session,'error']=ci
+                    stats.loc[session,'state']=state
+            all_stats = all_stats.append(stats)
+            
+        
+        plt.figure()
+        for state in states:        
+            this_data = all_stats.query('state==@state')
+            m, ci = mean_confidence_interval(this_data['mean'].values, confidence=0.95)
+            plt.errorbar(state,m,ci,color=cols[int(state)])#,color=cols[int(state)])
+            plt.scatter(state,m,color=cols[int(state)])
+            plt.title(measure + ' session means')
+            
+        plt.figure()
+        for state in states:        
+            this_data = all_stats.query('state==@state')
+            m, ci = mean_confidence_interval(this_data['error'].values, confidence=0.95)
+            plt.scatter(np.ones(len(this_data))*state,this_data['error'].values,color=cols[int(state)],s=10)
+            plt.errorbar(state,m,ci,color='k')#cols[int(state)])#,color=cols[int(state)])
+            plt.scatter(state,m,color=cols[int(state)],s=100)
+        
+            plt.title(measure + ' session variance')
+
+                      
+def state_measures_by_session_std(subject, hmm_trials, save_folder = ''):
+    measures = pd.DataFrame(columns=['pupil_diameter','running_speed','whisker_energy','reaction_time','hmm_state','session'])
+    
+    for idx, trials in enumerate(hmm_trials):
+        trials['session']=idx
+        measures = measures.append(trials[measures.columns])
+                
+    states = np.unique(measures['hmm_state'].dropna())
+    plt.figure()
+    
+    for measure in list(measures.columns[:-2]):
+        all_stats = pd.DataFrame(columns=['mean','error','state'])
+        stats = pd.DataFrame(columns=['mean','error','state'])
+        for state in states:
+            for session in np.unique(measures['session']):
+                    # measure = measures.columns[1]
+                    this_data = measures.query('hmm_state == @state and session == @session')[measure].values
+                    m = np.nanmean(this_data)
+                    std = np.nanstd(this_data)
+                    # plt.errorbar(session,m,ci,color=cols[int(state)])
+                    # plt.scatter(session,m,color=cols[int(state)])
+                    stats.loc[session,'mean']=m
+                    stats.loc[session,'error']=std
+                    stats.loc[session,'state']=state
+            all_stats = all_stats.append(stats)
+            
+        
+        fig = plt.figure()
+        ax = fig.add_axes([.1,.1,.8,.8])
+        for state in states:        
+            this_data = all_stats.query('state==@state')
+            m = np.nanmean(this_data['mean'].values)
+            std = np.nanstd(this_data['mean'].values)
+            
+            data = [this_data['mean'].dropna().values.astype(np.float)]
+            parts = ax.violinplot(data,[int(state)],showmeans=False, showmedians=False, showextrema=False)
+            for pc in parts['bodies']:
+                pc.set_facecolor(cols[int(state)])
+                pc.set_edgecolor('black')
+                pc.set_alpha(1)
+            # ax.scatter(np.ones(len(this_data))*state,this_data['mean'].values,color=cols[int(state)],s=10)
+            # ax.errorbar(state,m,std,color='k')#cols[int(state)])#,color=cols[int(state)])
+            # ax.scatter(state,m,color=cols[int(state)],s=100)
+            plt.title(measure + ' session means')
+            
+        plt.figure()
+        for state in states:        
+            this_data = all_stats.query('state==@state')
+            m = np.nanmean(this_data['error'].values)
+            std = np.nanstd(this_data['error'].values)
+            plt.scatter(np.ones(len(this_data))*state,this_data['error'].values,color=cols[int(state)],s=10)
+            plt.errorbar(state,m,std,color='k')#cols[int(state)])#,color=cols[int(state)])
+            plt.scatter(state,m,color=cols[int(state)],s=100)
+        
+            plt.title(measure + ' session variance')
+
+def report_cover(subject, nwbfilepath,save_folder):
+    trial_data, trial_dict = load.load_trial_data(nwbfilepath)
+    
+    if trial_dict['target_modality']['visual']==int(trial_data['target_modality'][0]):
+        modality = 'Visual Task'
+    elif trial_dict['target_modality']['auditory']==int(trial_data['target_modality'][0]):
+        modality = 'Auditory Task'
+    
+    plt.figure()
+    plt.text(0,0,subject)
+    plt.text(0,-.25,modality)
+    plt.ylim([-2,.2])
+    plt.xlim([-.05,1])
+    plt.xticks([])
+    plt.yticks([])
+    if save_folder !='':
+        plt.savefig(save_folder + subject + "_cover.png")
+        plt.close()
+        
+        
+def generate_report(subject, save_folder):
+    
+    ### cover page    
+    
+    model_selection_path = glob.glob(save_folder + '*state_number_fitting.png')[0]
+    
+    state_folders = glob.glob(save_folder + '*states\\')
+    for folder in state_folders:
+        num_states = os.path.basename(folder[:-2])
+        cover_path = (glob.glob(folder + '*_cover.png')[0])
+        filepaths = [cover_path,model_selection_path]
+        
+        imgs = []
+        x= []
+        y= []
+        for filepath in filepaths:
+            this_image = plt.imread(filepath)[:,:,:3]
+            imgs.append(this_image)
+            y.append(this_image.shape[0])
+            x.append(this_image.shape[1])
+        
+        
+        page_x = max([sum(x[:]),sum(x[:])])
+        page_y = max(y[:])
+        cover_page =  np.full((page_y,page_x,3),1,dtype=float)
+        
+        cum_x = 0
+        cum_y = max(y[:])
+        for i, img in enumerate(imgs):
+            if i==3:
+                cum_x=0
+            if i<3:
+                cover_page[:y[i],cum_x:sum(x[:i+1]),:]=img
+                cum_x = x[i]+cum_x
+            else:
+                cover_page[cum_y:cum_y+y[i],cum_x:sum(x[3:i+1]),:]=img
+                cum_x = x[i]+cum_x
+        
+        cover_page = Image.fromarray(np.uint8(cover_page*255)).convert('RGB')
+        
+        #### generate page 1 - overview
+        page_list = []
+    
+        image_ids =['*choice_by_state.png', '*state_occupancy.png','*transition_matrix.png',
+                    '*GLM_Weights*.png', '*state_dwelltime_distribution.png', '*state_occupancy_by_session.png']
+        
+        filepaths = []
+        for file_ids in image_ids:
+            filepaths.append(glob.glob(folder + file_ids)[0])
+        
+        imgs = []
+        x= []
+        y= []
+        for filepath in filepaths:
+            this_image = plt.imread(filepath)[:,:,:3]
+            imgs.append(this_image)
+            y.append(this_image.shape[0])
+            x.append(this_image.shape[1])
+        
+        
+        page_x = max([sum(x[:3]),sum(x[3:])])
+        page_y = sum([max(y[:3]),max(y[3:])])
+        page1 =  np.full((page_y,page_x,3),1,dtype=float)
+        
+        cum_x = 0
+        cum_y = max(y[:3])
+        for i, img in enumerate(imgs):
+            if i==3:
+                cum_x=0
+            if i<3:
+                page1[:y[i],cum_x:sum(x[:i+1]),:]=img
+                cum_x = x[i]+cum_x
+            else:
+                page1[cum_y:cum_y+y[i],cum_x:sum(x[3:i+1]),:]=img
+                cum_x = x[i]+cum_x
+            
+        page1_im = Image.fromarray(np.uint8(page1*255)).convert('RGB')
+        page_list.append(page1_im)
+        
+        #### generate page 2 - state/measure relationship
+        image_ids =['*pupil_diameter_by_state.png', '*whisker_energy_by_state.png',
+                    '*running_speed_by_state.png','*reaction_time_by_state.png', 
+                    '*pupil_diameter_stats.png', '*_whisk_trials_violin.png',
+                    '*_running_trials_violin.png', '*reaction_time_stats.png',]
+        
+        filepaths = []
+        for file_ids in image_ids:
+            filepaths.append(glob.glob(folder + file_ids)[0])
+        
+        imgs = []
+        x= []
+        y= []
+        for filepath in filepaths:
+            this_image = plt.imread(filepath)[:,:,:3]
+            imgs.append(this_image)
+            y.append(this_image.shape[0])
+            x.append(this_image.shape[1])
+        
+        
+        page_x = max([sum(x[:4]),sum(x[4:])])
+        page_y = sum([max(y[:4]),max(y[4:])])
+        page2 =  np.full((page_y,page_x,3),1,dtype=float)
+        
+        cum_x = 0
+        cum_y = max(y[:4])
+        for i, img in enumerate(imgs):
+            if i==4:
+                cum_x=0
+            if i<4:
+                page2[:y[i],cum_x:sum(x[:i+1]),:]=img
+                cum_x = x[i]+cum_x
+            else:
+                page2[cum_y:cum_y+y[i],cum_x:sum(x[4:i+1]),:]=img
+                cum_x = x[i]+cum_x
+                
+                
+        page2_im = Image.fromarray(np.uint8(page2*255)).convert('RGB')
+        page_list.append(page2_im)
+        ### generate additional pages - session summaries
+        filepaths = glob.glob(folder + 'line summaries\\*')
+        for filepath in filepaths:
+            img = Image.open(filepath).convert('RGB')
+            page_list.append(img)
+        
+        ### save pdf
+        pdf1_filename = save_folder + subject + '_' + num_states + '_report.pdf'
+        # page1_im.save(pdf1_filename, "PDF" ,resolution=100.0, save_all=True)
+        cover_page.save(pdf1_filename, "PDF" ,resolution=100.0, save_all=True, append_images=page_list)
+

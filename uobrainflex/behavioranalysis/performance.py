@@ -7,6 +7,7 @@ Created on Wed Jul 21 08:42:06 2021
 
 from uobrainflex.nwb import loadbehavior as load
 import numpy as np
+import matplotlib.pyplot as plt
 
 ## for testing 
 # import pynwb
@@ -206,13 +207,77 @@ def response_times(nwbFileObj):
             response_time = np.append(response_time, np.nan)
     return response_time
     
-# import pynwb
-# import matplotlib.pyplot as plt
-# nwbfilepath = load.get_file_path('BW016','20210421')
-# nwbfilepath = load.get_file_path('BW016','20210422')
-# nwbfilepath = load.get_file_path('BW016','20210408')
-# ioObj = pynwb.NWBHDF5IO(nwbfilepath, 'r', load_namespaces=True)
-# nwbFileObj = ioObj.read()  
+def get_trial_psychos(trial_data):   
+    psycho = np.full((len(np.unique(trial_data.choice)),len(np.unique(trial_data['inpt']))),np.nan)
+    for ind, choice in enumerate(np.unique(trial_data['choice'])):
+        for ind2, this_inpt in enumerate(np.unique(trial_data['inpt'])):
+            state_trials=len(trial_data.query("inpt==@this_inpt"))
+            if state_trials>0:
+                psycho[ind,ind2]=len(trial_data.query("choice==@choice and inpt==@this_inpt"))/state_trials
+    
+    xvals = np.unique(trial_data['inpt'])
+    return psycho, xvals   
 
-# response_time = response_times(nwbFileObj)
-# plt.hist(response_time,np.arange(0,2,.01))
+def plot_trial_psycho(trial_data):
+    psychos, xvals = get_trial_psychos(trial_data)
+    
+    lines =['--',':','-']
+    symbols = ['<','>','s']
+    for i, psycho in enumerate(psychos):
+        plt.plot(xvals,psycho,lines[i]+symbols[i]+'k',linewidth = 2,markersize = 6)
+    plt.legend(['left','right','miss'], fontsize = 10)
+    plt.ylabel('probability', fontsize = 10)
+    plt.yticks(np.arange(0,1.1,.2), fontsize = 8)
+    plt.xticks(np.arange(-1,1.1,.5), fontsize = 8)
+
+        
+        
+def plot_session_measures_and_events(nwbfilepath):
+    nwbFileObj = load.load_nwb_file(nwbfilepath)
+    trial_data, trial_labels = load.read_trial_data(nwbFileObj)
+    behavior_measures = load.read_behavior_measures(nwbFileObj, speriod=0.001, measures=[], filt=True)
+    behavior_events, behavior_events_index = load.read_behavior_events(nwbFileObj, speriod=0.001, events=[])
+    plt.figure()
+    run = behavior_measures['running_speed']
+    plt.plot(run,'r')
+    
+    whisk = behavior_measures['whisker_energy']/5
+    plt.plot(whisk+np.nanmax(run),'b')
+    
+    pupil = behavior_measures['pupil_diameter']
+    plt.plot(pupil + np.nanmax(whisk) + np.nanmax(run)-np.nanmin(pupil),'g')
+    
+    lick = np.zeros(len(pupil))
+    left_lick = behavior_events_index['licks_left']
+    right_lick = behavior_events_index['licks_right']
+    for i in range(5):
+        lick[left_lick+i]=-1
+        lick[right_lick+i]=1
+    
+    plt.plot(lick/20-.15,'k')
+    
+    stim=np.zeros(len(pupil))
+    inpt = trial_data['inpt']
+    inpt[inpt!=inpt]=0
+    trial_time = np.round(trial_data['stimulus_time'].values*1000).astype(int)
+    stim_dur = int(trial_data['stimulus_duration'][0])
+    for i in range(stim_dur):
+        stim[trial_time+i]=inpt
+        
+    plt.plot(stim/10-.3,'k')
+    
+    reward =np.zeros(len(pupil))
+    reward_left = behavior_events_index['reward_left']
+    reward_right = behavior_events_index['reward_right']
+    for i in range(750):
+        reward[reward_left+i]=-1
+        reward[reward_right+i]=1
+        
+    plt.plot(reward/20-.5,'k')
+    
+    
+    
+   
+    
+    
+    
