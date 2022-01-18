@@ -22,9 +22,9 @@ from tkinter import filedialog
 save_dialog = 'select folder to save hmm reports'
 root = tk.Tk()
 root.withdraw()
-save_folder = filedialog.askdirectory(title = save_dialog)
+save_folder = filedialog.askdirectory(title = save_dialog)+'\\'
 
-subject = input('enter subject name \n')
+subject = input('enter subject name \n') 
 
 if not(os.path.exists(save_folder)):
     os.mkdir(save_folder)

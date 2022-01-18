@@ -255,10 +255,10 @@ def choice_hmm_sate_fit(subject, inpts, true_choices, max_states=4, save_folder=
     plt.xlabel("states")
     plt.xlim(0, max_states+1)
     plt.ylabel("Log Probability")
-    plt.show()
     plt.title(subject + ' Model Fitting')
     if save_folder !='':
         plt.savefig(save_folder + subject +'_state_number_fitting.png')
+        plt.close()
     
     # #drop lowest kfold value and determine highest LL state for use in model selected
     # ll_heldout_droplow = np.zeros([ll_heldout.shape[0],ll_heldout.shape[1]-1])
@@ -943,23 +943,6 @@ def plot_measures_by_state(subject, hmm_trials, save_folder = ''):
         if save_folder !='':
             plt.savefig(save_folder + subject +'_' + measure +"_by_state.png")
             plt.close()
-            
-      
-        plt.figure()
-        for state in states:            
-            if measure == 'running_speed':
-                cutoff = .01
-            elif measure == 'whisker_energy':
-                cutoff = .15
-            else:
-                cutoff = np.nan
-   
-            data_for_stat = measures.query('hmm_state == @state')[measure].values
-            if ~np.isnan(cutoff):
-                active = len(np.where(data_for_stat>cutoff)[0])/len(data_for_stat)
-                passive = 1-active
-                plt.bar(state,active,width=.25)
-                plt.bar(state+.3,passive,width=.25)
         
         plt.figure()
         for state in states: 
