@@ -16,9 +16,11 @@ import scipy
 from PIL import Image
 import glob
 import os 
+from scipy.stats import mannwhitneyu #non parametric distribution test
+from scipy.stats import levene   #levene tests for differences in the variance of data of non normal distributions
+from scipy.stats import kruskal  #non paremetric analysis of variance
 
 cols = ['#ff7f00', '#4daf4a', '#377eb8', '#7E37B8','m','r','c']
-
 
 def format_choice_behavior_hmm(trial_data, trial_labels, drop_no_response=False, drop_distractor_trials=True):
     """
@@ -157,6 +159,7 @@ def compile_choice_hmm_data(sessions, get_behavior_measures=False, verbose=True)
             print(f'Loading {sess}')
         nwbFileObj = load.load_nwb_file(sess)
         trial_data, trial_labels = load.read_trial_data(nwbFileObj)
+        trial_data['file_name'] = os.path.basename(sess)
         if get_behavior_measures:
             behavior_measures = load.read_behavior_measures(nwbFileObj)
             _ ,behavior_events = load.read_behavior_events(nwbFileObj)
@@ -199,6 +202,7 @@ def choice_hmm_sate_fit(subject, inpts, true_choices, max_states=4, save_folder=
     num_categories = len(np.unique(np.concatenate(true_choices)))    # number of categories for output
     input_dim = inpts[0].shape[1]                                    # input dimensions
     
+    
     #Outer loop over the parameter for which you're doing model selection for
     for iS, num_states in enumerate(range(1,max_states+1)):
         
@@ -235,7 +239,6 @@ def choice_hmm_sate_fit(subject, inpts, true_choices, max_states=4, save_folder=
             #Compute log-likelihood for each dataset
             ll_training_map[iS,iK] = map_glmhmm.log_probability(training_data, inputs=training_inpts)/nTrain
             ll_heldout_map[iS,iK] = map_glmhmm.log_probability(test_data, inputs=test_inpts)/nTest
-            
     
     #plot ll calculations
     global cols
@@ -331,6 +334,36 @@ def get_posterior_probs(hmm, true_choices, inpts, hmm_trials, occ_thresh = .8):
 
     return posterior_probs, hmm_trials
 
+def get_posterior_probs_from_hmm_trials(hmm_trials):   
+    posterior_probs=[]
+    #update hmm_trials with state probabilities
+    for session_trials in hmm_trials:
+        columns = session_trials.columns
+        posterior_probabilities=[]
+        for col in columns :
+            if col[:6]=='state_':
+                if len(posterior_probabilities)==0:
+                    posterior_probabilities = session_trials[col].values
+                else:
+                    posterior_probabilities = np.vstack([posterior_probabilities, session_trials[col].values])
+        posterior_probs.append(np.array(posterior_probabilities))    
+    return posterior_probs
+
+def get_inpts_from_hmm_trials(hmm_trials):
+    inpts=list([])
+    for session in hmm_trials:
+        stim = session['inpt'].values
+        these_inpts = [ np.vstack((stim,np.ones(len(stim)))).T ]
+        inpts.extend(these_inpts)
+    return inpts
+
+def get_true_choices_from_hmm_trials(hmm_trials):
+    true_choices=list([])
+    for session in hmm_trials:
+        these_choices = np.full([len(session),1],np.int(2)) 
+        these_choices[:,0] = session['choice'].values
+        true_choices.append(these_choices)
+    return true_choices
 
 def get_psychos(hmm_trials):  
     all_trials = pd.DataFrame()
@@ -348,9 +381,34 @@ def get_psychos(hmm_trials):
     xvals = np.unique(all_trials['inpt'])
     return psycho, xvals   
 
+def get_trials_psychos(all_trials):
+    l=[]
+    r=[]
+    m=[]
+    for stim in np.unique(all_trials['inpt']):
+        lft = len(all_trials.query('inpt==@stim and choice==0'))
+        rt = len(all_trials.query('inpt==@stim and choice==1'))
+        mis = len(all_trials.query('inpt==@stim and choice==2'))
+        n_trials = len(all_trials.query('inpt==@stim'))
+        l.append(lft/n_trials)
+        r.append(rt/n_trials)
+        m.append(mis/n_trials)
+        
+    all_trial_psycho = np.vstack([l,r,m])
+    xvals = np.unique(all_trials['inpt'])
+    return all_trial_psycho, xvals
+    
 
 def compare_psychos(psycho1,psycho2):
     all_similarity=[]
+    
+    missing_values = np.unique(np.where(psycho1!=psycho1)[2])
+    missing_values2 = np.unique(np.where(psycho2!=psycho2)[2])
+    missing_vals = np.unique(np.concatenate([missing_values,missing_values2]))
+    
+    psycho1 = np.delete(psycho1,missing_vals,axis=2)
+    psycho2 = np.delete(psycho2,missing_vals,axis=2)
+    
     for state in psycho2:
         similarity=[]
         for state2 in psycho1:
@@ -360,28 +418,21 @@ def compare_psychos(psycho1,psycho2):
 
 
 def permute_hmm(hmm, hmm_trials):
-    perfect_psychos = [[[1, 1, 1, 0, 0, 0],
-                     [0, 0, 0, 1, 1, 1],
-                     [0, 0, 0, 0, 0, 0]],
-                   [[1, 1, 1, 1, 1, 1],
-                    [0, 0, 0, 0, 0, 0],
-                    [0, 0, 0, 0, 0, 0]],
-                   [[0, 0, 0, 0, 0, 0],
-                    [1, 1, 1, 1, 1, 1],
-                    [0, 0, 0, 0, 0, 0]],
-                   [[0, 0, 0, 0, 0, 0],
-                    [0, 0, 0, 0, 0, 0],
-                    [1, 1, 1, 1, 1, 1]]]
-    perfect_psychos = np.array(perfect_psychos)
-    
     psycho,_ = get_psychos(hmm_trials)
     
-    perfect_psychos = np.zeros((3,psycho.shape[1],psycho.shape[2]))
+    # perfect_psychos = np.zeros((3,psycho.shape[1],psycho.shape[2]))
+    # perfect_psychos[0,0,:int(perfect_psychos.shape[2]/2)]=1
+    # perfect_psychos[0,1,int(perfect_psychos.shape[2]/2):]=1
+    # perfect_psychos[1,0,:]=1
+    # perfect_psychos[2,1,:]=1
+    # # perfect_psychos[3,2,:]=1
+    
+    
+    perfect_psychos = np.zeros((2,psycho.shape[1],psycho.shape[2]))
     perfect_psychos[0,0,:int(perfect_psychos.shape[2]/2)]=1
     perfect_psychos[0,1,int(perfect_psychos.shape[2]/2):]=1
-    perfect_psychos[1,0,:]=1
-    perfect_psychos[2,1,:]=1
-    # perfect_psychos[3,2,:]=1
+    perfect_psychos[1,2,:]=1
+
     
     # if np.isnan(psycho).any():
     #     del_ind = np.unique(np.where(np.isnan(psycho))[2])
@@ -394,7 +445,7 @@ def permute_hmm(hmm, hmm_trials):
         state_similarity = np.append(state_similarity,extra_states)
     
     if len(np.unique(state_similarity)) != len(state_similarity):
-        best_psycho_ind = np.argmin(similarity[:,0])
+        best_psycho_ind = np.nanargmin(similarity[:,0])
         state_options = np.arange(similarity.shape[0])
         state_options = np.delete(state_options,best_psycho_ind)
         state_similarity = np.concatenate((np.full(1,best_psycho_ind),state_options))
@@ -476,9 +527,9 @@ def plot_session_posterior_probs(subject, hmm,true_choices,inpts, save_folder=''
 
 def plot_transition_matrix(subject, hmm, save_folder=''):
     # plot state transition matrix
-    num_states =len(hmm.observations.params)
-    plt.figure()
+    plt.figure(figsize=[8,8])
     recovered_trans_mat = np.exp(hmm.transitions.log_Ps)
+    num_states = recovered_trans_mat.shape[0]
     plt.imshow(recovered_trans_mat, vmin=-0.8, vmax=1, cmap='bone')
     for i in range(recovered_trans_mat.shape[0]):
         for j in range(recovered_trans_mat.shape[1]):
@@ -490,7 +541,7 @@ def plot_transition_matrix(subject, hmm, save_folder=''):
     plt.xticks(range(0, num_states), np.arange(num_states)+1, fontsize=10)
     plt.yticks(range(0, num_states), np.arange(num_states)+1, fontsize=10)
     plt.ylim(num_states - 0.5, -0.5)
-    plt.title("transition matrix", fontsize = 20)
+    plt.title(subject + " transition matrix", fontsize = 20)
     if save_folder!='':
         plt.savefig(save_folder + subject +" transition_matrix.png")
         plt.close()
@@ -535,7 +586,7 @@ def plot_state_occupancy(subject, hmm_trials, save_folder=''):
         lg.append('state '+str(state+1))
     plt.plot(session_state_occupancy.iloc[:,-1],'k:')
     lg.append('undecided')
-    plt.title('state occupancy by session')
+    plt.title(subject +' state occupancy by session')
     plt.ylabel('p(state)')
     plt.xlabel('session')
     plt.legend(lg)
@@ -678,7 +729,12 @@ def plot_session_summaries(subject, hmm_trials, nwbfilepaths,save_folder ='', me
         if any(columns=='state_6_prob'):
             ax.plot(these_trials['state_6_prob'].values,cols[5],linewidth=3)
             lg.append('state 6')
-        if 'pupil_diameter' in columns:
+        if 'post_hoc_pupil_diameter' in columns:
+            pupil = these_trials['post_hoc_pupil_diameter']
+            pupil = pupil/2+.5
+            ax.scatter(range(len(these_trials)),pupil,color='k')
+            lg.append('pupil')
+        elif 'pupil_diameter' in columns:
             pupil = these_trials['pupil_diameter']
             pupil = pupil/2+.5
             ax.scatter(range(len(these_trials)),pupil,color='k')
@@ -889,21 +945,106 @@ def plot_whisk_by_state(subject, hmm_trials, save_folder = ''):
         plt.savefig(save_folder +  subject + "_whisk_trials_violin.png")         
         plt.close()
 
+def plot_measures_by_state_v2(subject, hmm_trials, save_folder = ''):
+        
+    fsize = 20
+    measures = pd.DataFrame(columns=['pupil_diameter','running_speed','whisker_energy','reaction_time','pupil_diff','hmm_state','session'])
+    for idx, trials in enumerate(hmm_trials):
+        trials['session']=idx
+        measures = measures.append(trials[measures.columns])
+    
+    bin_size = {'pupil_diameter' : .05,
+                'whisker_energy' : .02,
+                'running_speed' : .02,
+                'reaction_time' : 50,
+                'pupil_diff' : .01,}
+    xlabel = {'pupil_diameter' : 'pupil diameter (%max)',
+                'whisker_energy' : 'whisker energy (a.u.)',
+                'running_speed' : 'wheel speed (m/s)',
+                'reaction_time' : 'reaction time (ms)',
+                'pupil_diff' : 'trial-to-trial pupil difference (%max)'}
+    for measure in measures.columns[:-2]:
+        plt.figure(figsize=(25, 12), facecolor='w', edgecolor='k')
+        ax = plt.subplot(1,3,1)
+        all_data=[]
+        lg=[]
+        #plot histograms of measures by state
+        for i, state in enumerate(np.unique(measures['hmm_state'].dropna())):
+            data = measures.query('hmm_state == @state')[measure].dropna()
+            bins = np.arange(measures[measure].min(),measures[measure].max(),bin_size[measure])
+            data_h, _ = np.histogram(data,bins)
+            plt.plot(bins[:-1],data_h/sum(data_h),linewidth=3,color = cols[i])
+            all_data.append(data.values)
+            lg.append('state ' + str(int(state+1)))
+        plt.legend(lg,fontsize = 20)
+        plt.xlabel(xlabel[measure],fontsize = fsize)
+        plt.ylabel('probability',fontsize = fsize)
+        plt.xticks(fontsize=fsize)
+        plt.yticks(fontsize=fsize)
+        
+        
+        alpha = .05/(i+1)
+        
+        mw = np.full([len(all_data),len(all_data)],np.nan)
+        lv = np.full([len(all_data),len(all_data)],np.nan)
+        mw = np.full([len(all_data),len(all_data)],alpha)
+        lv = np.full([len(all_data),len(all_data)],alpha)
+        for i in range(len(all_data)):
+            for k in range(i+1,len(all_data)):
+                s,mw[i,k]=mannwhitneyu(all_data[i],all_data[k])
+                s, lv[i,k] = levene(all_data[i], all_data[k])   
+                
+        mw[mw>alpha]=alpha
+        lv[lv>alpha]=alpha
+        mw[-1,0]=0
+        lv[-1,0]=0
+    
+        #plot mannwhitney test results
+        ax = plt.subplot(1,3,2)
+        im = ax.imshow(mw,cmap='inferno')
+        plt.yticks(range(0,k+1),range(1,k+2))
+        plt.xticks(range(0,k+1),range(1,k+2))
+        plt.title('Mann–Whitney U',fontsize=fsize)
+        plt.ylabel('hmm state',fontsize=fsize)
+        plt.xlabel('hmm state',fontsize=fsize)
+        plt.colorbar(im)
+        plt.xticks(fontsize=fsize)
+        plt.yticks(fontsize=fsize)
+        
+        #plot levene test results
+        ax = plt.subplot(1,3,3)
+        im = ax.imshow(lv,cmap='inferno')
+        plt.yticks(range(0,k+1),range(1,k+2))
+        plt.xticks(range(0,k+1),range(1,k+2))
+        plt.title('levene',fontsize=fsize)
+        plt.ylabel('hmm state',fontsize=fsize)
+        plt.xlabel('hmm state',fontsize=fsize)
+        plt.colorbar(im)
+        plt.xticks(fontsize=fsize)
+        plt.yticks(fontsize=fsize)
+        
+        s, p = kruskal(all_data[0],all_data[1],all_data[2])
+        plt.suptitle(measure + '\n\nkruskal wallace p value = ' + str(p),fontsize=fsize)
+        if save_folder !='':
+            plt.savefig(save_folder + subject +'_' + measure +"_stats_v2.png")
+            plt.close()
+    
 def plot_measures_by_state(subject, hmm_trials, save_folder = ''):
-
     global cols
     xlabels = {'pupil_diameter': 'Pupil Diameter (% max)',
                'running_speed': 'Wheel Speed (m/s)',
                'whisker_energy': 'Whisker Motion Energy (a.u)',
                'reaction_time': 'Reaction Time (ms)',
+               'pupil_diff': 'Trial Delta Pupil (%max)',
                'hmm_state': 'HMM state'}
     titles = {'pupil_diameter': 'Pupil',
              'running_speed': 'Wheel speed',
              'whisker_energy': 'Whisker movement',
              'reaction_time':'Reaction time',
+             'pupil_diff': 'Pupil change from last trial',
              'hmm_state':''}
     
-    measures = pd.DataFrame(columns=['pupil_diameter','running_speed','whisker_energy','reaction_time','hmm_state'])
+    measures = pd.DataFrame(columns=['pupil_diameter','running_speed','whisker_energy','reaction_time','pupil_diff','hmm_state'])
     for trials in hmm_trials:
         concat_measures = np.append(trials.columns.values, measures.columns.values)
         value, count = np.unique(concat_measures,return_counts = True)
@@ -918,6 +1059,8 @@ def plot_measures_by_state(subject, hmm_trials, save_folder = ''):
     for measure in measures.columns:
         plt.figure()
         this_data = measures[measure].dropna()
+        if measure== 'pupil_diff':
+            this_data = abs(this_data)
         
         if measure == 'running_speed':
             cutoff = .01
@@ -935,6 +1078,7 @@ def plot_measures_by_state(subject, hmm_trials, save_folder = ''):
             #     data_for_hist = data_for_hist[np.where(data_for_hist>cutoff)[0]]  
             hist_data = np.histogram(data_for_hist,bins=bins)
             plt.plot(hist_data[1][:-1],hist_data[0]/sum(hist_data[0]),color=cols[int(state)],linewidth=3)
+            # plt.plot(hist_data[1][:-1],1-np.cumsum(hist_data[0])/sum(hist_data[0]),color=cols[int(state)],linewidth=3)
         plt.title(measure)
         plt.title(subject + '\n' + titles[measure] + ' distribution by state',fontsize=15)
         plt.xlabel(xlabels[measure],fontsize=12)
@@ -954,13 +1098,15 @@ def plot_measures_by_state(subject, hmm_trials, save_folder = ''):
                 cutoff = np.nan
                     
             data_for_stat = measures.query('hmm_state == @state')[measure].dropna().values
+
             if ~np.isnan(cutoff):
                 active = len(np.where(data_for_stat>cutoff)[0])/len(data_for_stat)
                 passive = 1-active
                 data_for_stat = data_for_stat[np.where(data_for_stat>cutoff)[0]]  
+            if measure== 'pupil_diff':
+                data_for_stat = abs(data_for_stat)        
             
-            
-            m, ci = mean_confidence_interval(data_for_stat,.95)
+            m, ci = np.mean(data_for_stat),np.std(data_for_stat)
             plt.plot(state,m,'s',color=cols[int(state)])
             plt.errorbar(state,m,ci,color=cols[int(state)])
         plt.xticks(range(0,len(states)),range(1,len(states)+1))
@@ -976,6 +1122,71 @@ def plot_measures_by_state(subject, hmm_trials, save_folder = ''):
             plt.savefig(save_folder + subject +'_' + measure +"_stats.png")
             plt.close()
             
+         
+def plot_measures_space_state(subject, hmm_trials, save_folder = ''):
+    global cols
+    measures = pd.DataFrame(columns=['pupil_diameter','running_speed','whisker_energy','reaction_time','pupil_diff','hmm_state','session'])
+    cols = ['#ff7f00', '#4daf4a', '#377eb8', '#7E37B8','m','r','c']
+    
+    for idx, trials in enumerate(hmm_trials):
+        trials['session']=idx
+        measures = measures.append(trials[measures.columns])
+    
+    
+    plt.figure(figsize=(20, 20), facecolor='w', edgecolor='k')
+    for i, measure in enumerate(measures.columns[:-2]):
+        for j in range(i,len(measures.columns[:-2])):
+            n= i * len(measures.columns[:-2]) + j +1
+            plt.subplot(5,5,n)
+            measure2 = measures.columns[j]
+            plt.title(measure + ' x ' + measure2)
+                
+            for state in np.unique(measures['hmm_state'].dropna()):
+                state_data = measures.query('hmm_state == @state')
+                data1 = state_data[measure].values
+                data2 = state_data[measure2].values
+                
+                plt.scatter(data1,data2,s=4,color=cols[int(state)])
+    plt.suptitle('measures space by state', fontsize = 20)
+    if save_folder !='':
+        plt.savefig(save_folder + subject +'_measures_space_by_state.png')
+        plt.close()
+          
+def plot_hmm_state_by_measure_quantiles(subject, hmm_trials, save_folder =''):
+    all_trials = pd.DataFrame()
+    for trials in hmm_trials:
+        all_trials = all_trials.append(trials)
+    
+    measures = ['pupil_diameter','whisker_energy','running_speed','pupil_diff']
+
+    for measure in measures:
+        stim_data = all_trials[measure].dropna().values
+        
+        hmm_state = np.full([6,20],np.nan)
+        hmm_state_percent = np.full([6,20],np.nan)
+        for i,qt in enumerate(np.arange(0,1,.1)):
+            lower = np.quantile(stim_data,qt)
+            upper = np.quantile(stim_data,qt+.1)
+            
+            these_trials = all_trials.query(measure + '> @lower and ' + measure + ' < @upper ')
+            # performance.get_trial_psychos(these_trials)
+            # plt.figure()
+            # performance.plot_trial_psycho(these_trials)
+            
+            for j in np.unique(these_trials['hmm_state'].dropna()):
+                hmm_state[int(j),i]=len(these_trials.query('hmm_state == @j'))
+                hmm_state_percent[int(j),i]=len(these_trials.query('hmm_state == @j'))/len(these_trials)
+        
+        plt.figure()
+        for i, state_data in enumerate(hmm_state_percent):
+            plt.plot(state_data,color = cols [i])
+        plt.ylabel('p(state)')
+        plt.xticks(range(0,10),np.arange(0,100,10))
+        plt.xlabel(measure + ' quantile')
+        if save_folder !='':
+            plt.savefig(save_folder + subject + '_state_probability_by_' + measure + '_quantile.png')
+            plt.close()
+
             
 def state_measures_by_session_95ci(subject, hmm_trials, save_folder = ''):
     measures = pd.DataFrame(columns=['pupil_diameter','running_speed','whisker_energy','reaction_time','hmm_state','session'])
@@ -1216,7 +1427,54 @@ def generate_report(subject, save_folder):
                 
         page2_im = Image.fromarray(np.uint8(page2*255)).convert('RGB')
         page_list.append(page2_im)
+        
+        ### generate page 3 - state by measure quantiles
+        image_ids =['*pupil_diameter_quantile.png', '*whisker_energy_quantile.png',
+                '*running_speed_quantile.png']
+        filepaths = []
+        for file_ids in image_ids:
+            filepaths.append(glob.glob(folder + file_ids)[0])
+        
+        imgs = []
+        x= []
+        y= []
+        for filepath in filepaths:
+            this_image = plt.imread(filepath)[:,:,:3]
+            imgs.append(this_image)
+            y.append(this_image.shape[0])
+            x.append(this_image.shape[1])
+        
+        
+        page_x = max([sum(x[:]),sum(x[:])])
+        page_y = max(y[:])
+        page3 =  np.full((page_y,page_x,3),1,dtype=float)
+        
+        cum_x = 0
+        cum_y = max(y[:])
+        for i, img in enumerate(imgs):
+            if i==3:
+                cum_x=0
+            if i<3:
+                page3[:y[i],cum_x:sum(x[:i+1]),:]=img
+                cum_x = x[i]+cum_x
+            else:
+                page3[cum_y:cum_y+y[i],cum_x:sum(x[3:i+1]),:]=img
+                cum_x = x[i]+cum_x
+        
+        page3_im = Image.fromarray(np.uint8(page3*255)).convert('RGB')
+        page_list.append(page3_im)
+
+        
         ### generate additional pages - session summaries
+        measurepaths = glob.glob(folder + '*_stats_v2.png')
+        for filepath in measurepaths:
+            img = Image.open(filepath).convert('RGB')
+            page_list.append(img)
+            
+        measurespacepaths = glob.glob(folder + '*_measures_space_by_state.png')
+        img = Image.open(measurespacepaths[0]).convert('RGB')
+        page_list.append(img)    
+        
         filepaths = glob.glob(folder + 'line summaries\\*')
         for filepath in filepaths:
             img = Image.open(filepath).convert('RGB')

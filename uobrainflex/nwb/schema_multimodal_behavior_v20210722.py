@@ -37,11 +37,17 @@ schema = \
             "timestamps": "LV_FrameClock.txt",
             "unit": ""
         },
-        "running_speed": {
+    "running_speed": {
             "description": "Speed of the animal, estimated from the rotary encoder on the wheel.",
             "filename": "Encoder_Value.txt",
             "timestamps": "Encoder_Time.txt",
             "unit": "cm/s"
+        },
+    "post_hoc_pupil_diameter": {
+            "description": "Pixel length of the long axis of the pupil per frame calculated post-hoc.",
+            "filename": "post_hoc_pupil_diameter.txt",
+            "timestamps": "LV_FrameClock.txt",
+            "unit": "pixels"
         },
 	"licks_left": {
             "description": "Time of each left-port lick.",

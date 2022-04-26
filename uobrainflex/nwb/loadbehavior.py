@@ -217,9 +217,14 @@ def read_behavior_measures(nwbFileObj, speriod=0.001, measures=[], filt=True):
         behavior_measures (DataFrame): Dataframe where index = samples, and columns = [measures, timestamps]
     """
     filt_params = {'whisker_energy': int(.5/speriod)+1, 'pupil_area': int(1/speriod)+1,
-                   'running_speed': int(.2/speriod)+1,'pupil_diameter':int(1/speriod)+1}
-    zero = {'whisker_energy': True, 'pupil_area': False, 'running_speed': False,'pupil_diameter':False}
-    norm = {'whisker_energy': True, 'pupil_area': True, 'running_speed': False,'pupil_diameter':True}
+                   'running_speed': int(.2/speriod)+1,'pupil_diameter':int(1/speriod)+1,
+                   'post_hoc_pupil_diameter':int(1/speriod)+1}
+    zero = {'whisker_energy': True, 'pupil_area': False,
+            'running_speed': False,'pupil_diameter':False,
+            'post_hoc_pupil_diameter':False}
+    norm = {'whisker_energy': True, 'pupil_area': True,
+            'running_speed': False,'pupil_diameter':True,
+            'post_hoc_pupil_diameter':True}
 
     if not measures:
         keys = nwbFileObj.acquisition.keys()
@@ -367,6 +372,7 @@ def load_behavior_events(nwbfilepath, speriod=0.001, events=[]):
 def fetch_trial_beh_measures(trial_data,behavior_measures):
     """
     Fetches behavior measures at moment of stimulus presentation
+    Also includes pupil trace for each trial from stimulus time -1s - +4s
     
     Args:
         trial_data (dataframe): trial data loaded by load_trial_data function
@@ -381,6 +387,8 @@ def fetch_trial_beh_measures(trial_data,behavior_measures):
     if any(measure_index == 'pupil_size'):
         measure_index[np.where(measure_index == 'pupil_diameter')[0][0]] = 'pupil_diameter'
             
+    pupil_traces =pd.DataFrame({'pupil_trace':[np.full(5000,np.nan)]})
+
     #loop through each trial
     for idx in trial_data.index:
         #get start sample
@@ -389,10 +397,23 @@ def fetch_trial_beh_measures(trial_data,behavior_measures):
         for measures_idx, key in enumerate(measures):
             #write behavior measures from start sample to trial_data
             if start_sample <= n_measures:
-                trial_data.loc[idx,measure_index[measures_idx]] = behavior_measures.loc[start_sample,key]
+                this_measure = measure_index[measures_idx]
+                trial_data.loc[idx,this_measure] = behavior_measures.loc[start_sample,key]
             else:
                 trial_data.loc[idx,measure_index[measures_idx]] = np.nan
-    return trial_data
+                
+            if key == 'post_hoc_pupil_diameter':
+                trace = behavior_measures.loc[start_sample-999:start_sample+4000,key].values
+                pupil_traces.loc[idx,'pupil_trace']=trace
+
+    if any(trial_data.columns == 'pupil_diameter'):
+        pupil_diff = np.concatenate([np.full(1,np.nan),np.diff(trial_data['pupil_diameter'])])
+        trial_data['pupil_diff'] = pupil_diff
+    if any(trial_data.columns == 'post_hoc_pupil_diameter'):
+        pupil_diff = np.concatenate([np.full(1,np.nan),np.diff(trial_data['post_hoc_pupil_diameter'])])
+        trial_data['post_hoc_pupil_diff'] = pupil_diff
+    return pd.concat([trial_data, pupil_traces], axis=1) 
+
 
 def fetch_trial_beh_events(trial_data,behavior_events):
     """

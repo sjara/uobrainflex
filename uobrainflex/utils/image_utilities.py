@@ -16,26 +16,54 @@ from skimage.filters import gaussian
 from scipy import ndimage
 import scipy.ndimage.morphology as ni
 
-def import_multi_tif(tif_folder, n_channels=2, down_sample_factor= 2):
+# def import_multi_tif(tif_folder, n_channels=2, down_sample_factor= 2,dtype=np.float16):
+#     tif_filepaths = glob.glob(os.path.join(tif_folder + '\*.tif'))
+#     print('\n' + str(len(tif_filepaths)) + ' file(s) to process')
+#     for i, image_path in enumerate(tif_filepaths):
+#         im = io.imread(image_path)
+#         im = np.array(im,dtype=dtype)
+#         if n_channels==2:
+#             if i == 0:
+#                 wf_blue = np.ndarray([0, int(im.shape[1]/down_sample_factor), int(im.shape[2]/down_sample_factor)])
+#                 wf_green = np.ndarray([0, int(im.shape[1]/down_sample_factor), int(im.shape[2]/down_sample_factor)])
+                
+#             first = np.atleast_3d(block_reduce(im[np.arange(0,len(im),2)],(1,down_sample_factor,down_sample_factor),func=np.mean))
+#             second = np.atleast_3d(block_reduce(im[np.arange(1,len(im),2)],(1,down_sample_factor,down_sample_factor),func=np.mean))
+#             if wf_blue.shape[0] == wf_green.shape[0]:
+#                 wf_blue = np.append(wf_blue, first, axis=0)
+#                 wf_green = np.append(wf_green, second, axis=0)
+#             else:
+#                 wf_blue = np.append(wf_blue, second, axis=0)
+#                 wf_green = np.append(wf_green, first, axis=0)                  
+#         print('\nFile ' + str(i+1) + ' of ' + str(len(tif_filepaths)) + ' complete')
+#     return wf_blue, wf_green
+
+
+def import_multi_tif(tif_folder, n_channels=2, down_sample_factor= 2,dtype=np.float16):
     tif_filepaths = glob.glob(os.path.join(tif_folder + '\*.tif'))
     print('\n' + str(len(tif_filepaths)) + ' file(s) to process')
+    frame = 0 
     for i, image_path in enumerate(tif_filepaths):
         im = io.imread(image_path)
+        im = np.array(im,dtype=dtype)
+        file_frames = int(im.shape[0]/down_sample_factor)
+        
         if n_channels==2:
             if i == 0:
-                wf_blue = np.ndarray([0, int(im.shape[1]/down_sample_factor), int(im.shape[2]/down_sample_factor)])
-                wf_green = np.ndarray([0, int(im.shape[1]/down_sample_factor), int(im.shape[2]/down_sample_factor)])
-                
-            first = np.atleast_3d(block_reduce(im[np.arange(0,len(im),2)],(1,down_sample_factor,down_sample_factor),func=np.mean))
-            second = np.atleast_3d(block_reduce(im[np.arange(1,len(im),2)],(1,down_sample_factor,down_sample_factor),func=np.mean))
-            if wf_blue.shape[0] == wf_green.shape[0]:
-                wf_blue = np.append(wf_blue, first, axis=0)
-                wf_green = np.append(wf_green, second, axis=0)
+                wf_blue = np.ndarray([len(tif_filepaths)*file_frames, int(im.shape[1]/down_sample_factor), int(im.shape[2]/down_sample_factor)])
+                wf_green = np.ndarray([len(tif_filepaths)*file_frames, int(im.shape[1]/down_sample_factor), int(im.shape[2]/down_sample_factor)])
+                   
+            wf_green[frame:frame+file_frames]= np.atleast_3d(block_reduce(im[np.arange(1,len(im),2)],(1,down_sample_factor,down_sample_factor),func=np.mean))
+            if file_frames == im.shape[0]/down_sample_factor:
+                wf_blue[frame:frame+file_frames] = np.atleast_3d(block_reduce(im[np.arange(0,len(im),2)],(1,down_sample_factor,down_sample_factor),func=np.mean))
             else:
-                wf_blue = np.append(wf_blue, second, axis=0)
-                wf_green = np.append(wf_green, first, axis=0)                  
+                wf_blue[frame:frame+file_frames+1] = np.atleast_3d(block_reduce(im[np.arange(0,len(im),2)],(1,down_sample_factor,down_sample_factor),func=np.mean))
+        frame = frame+file_frames
         print('\nFile ' + str(i+1) + ' of ' + str(len(tif_filepaths)) + ' complete')
     return wf_blue, wf_green
+
+
+
 
 def set_transform_anchors(stationary_image, warp_image):
     figure = plt.figure()
