@@ -22,6 +22,14 @@ from scipy.stats import kruskal  #non paremetric analysis of variance
 
 cols = ['#ff7f00', '#4daf4a', '#377eb8', '#7E37B8','m','r','c']
 
+a = '#679292'
+b ='#c41111'
+c ='#ffc589'
+d ='#ffa51e'
+e ='#f26c2a'
+f = '#ec410d'
+cols = [a,b,c,d,e,f]
+
 def format_choice_behavior_hmm(trial_data, trial_labels, drop_no_response=False, drop_distractor_trials=True):
     """
     Parameters
@@ -642,7 +650,49 @@ def plot_state_psychometrics(subject,hmm_trials,save_folder=''):
     if save_folder !='':
         plt.savefig(save_folder + subject + "_choice_by_state.png")        
         plt.close()
+    
         
+def get_dwell_times(hmm_trials):
+    session_transitions=[]
+    all_transitions=pd.DataFrame()
+    for sess, trials in enumerate(hmm_trials):
+        transitions = pd.DataFrame(columns=['state','dwell','first_trial','last_trial'])
+        trial_state = trials['hmm_state'].values
+        state_ind = 0
+        n=0
+        state_start = n
+        state=[]
+        dwell=[]
+        start_trial=[]
+        end_trial=[]
+        while n<len(trial_state)-1:
+            this_state = trial_state[n]
+            next_state = trial_state[n+1]
+            if not(this_state == next_state):
+                state_end = n+1
+                if ~np.isnan(this_state):
+                    state_ind = state_ind+1
+                    dwell.append(state_end-state_start+1)
+                    state.append(this_state)
+                    start_trial.append(state_start)
+                    end_trial.append(state_end)
+                state_start = n+1
+            n=n+1
+        state_end = n
+        if ~np.isnan(this_state):
+            dwell.append(state_end-state_start)
+            state.append(this_state)
+            start_trial.append(state_start)
+            end_trial.append(state_end)
+        transitions['state']=state
+        transitions['dwell']=dwell
+        transitions['first_trial']=start_trial
+        transitions['last_trial']=end_trial
+        session_transitions.append(transitions)
+        all_transitions = all_transitions.append(transitions)
+    return session_transitions
+      
+
 def plot_dwell_times(subject, hmm_trials, save_folder = ''):
     global cols
     session_transitions=[]
@@ -800,8 +850,8 @@ def plot_session_summaries_patch(subject, hmm_trials,dwell_times,nwbfilepaths,sa
             for idx in range(0,int(max(dwells['state']))+1):
                 hand.append(ax.add_patch(Rectangle((0,0),0,0,color=cols[idx],alpha=.2)))
                 lg.append('state ' + str(idx+1))
-        if 'pupil_diameter' in columns:
-            pupil = these_trials['pupil_diameter']
+        if 'post_hoc_pupil_diameter' in columns:
+            pupil = these_trials['post_hoc_pupil_diameter']
             pupil = pupil/2+.5
             hand.append(plt.scatter(range(len(these_trials)),pupil,color='k'))
             lg.append('pupil')

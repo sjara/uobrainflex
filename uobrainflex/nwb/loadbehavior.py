@@ -388,6 +388,8 @@ def fetch_trial_beh_measures(trial_data,behavior_measures):
         measure_index[np.where(measure_index == 'pupil_diameter')[0][0]] = 'pupil_diameter'
             
     pupil_traces =pd.DataFrame({'pupil_trace':[np.full(5000,np.nan)]})
+    whisker_traces =pd.DataFrame({'whisker_trace':[np.full(5000,np.nan)]})
+    running_traces =pd.DataFrame({'running_trace':[np.full(5000,np.nan)]})
 
     #loop through each trial
     for idx in trial_data.index:
@@ -405,6 +407,12 @@ def fetch_trial_beh_measures(trial_data,behavior_measures):
             if key == 'post_hoc_pupil_diameter':
                 trace = behavior_measures.loc[start_sample-999:start_sample+4000,key].values
                 pupil_traces.loc[idx,'pupil_trace']=trace
+            if key == 'whisker_energy':
+                trace = behavior_measures.loc[start_sample-999:start_sample+4000,key].values
+                whisker_traces.loc[idx,'whisker_trace']=trace
+            if key == 'running_speed':
+                trace = behavior_measures.loc[start_sample-999:start_sample+4000,key].values
+                running_traces.loc[idx,'running_trace']=trace
 
     if any(trial_data.columns == 'pupil_diameter'):
         pupil_diff = np.concatenate([np.full(1,np.nan),np.diff(trial_data['pupil_diameter'])])
@@ -412,7 +420,24 @@ def fetch_trial_beh_measures(trial_data,behavior_measures):
     if any(trial_data.columns == 'post_hoc_pupil_diameter'):
         pupil_diff = np.concatenate([np.full(1,np.nan),np.diff(trial_data['post_hoc_pupil_diameter'])])
         trial_data['post_hoc_pupil_diff'] = pupil_diff
-    return pd.concat([trial_data, pupil_traces], axis=1) 
+        trial_data['post_hoc_pupil_std3'] = trial_data['post_hoc_pupil_diameter'].rolling(3).std()      
+        trial_data['post_hoc_pupil_std5'] = trial_data['post_hoc_pupil_diameter'].rolling(5).std()      
+        trial_data['post_hoc_pupil_std10'] = trial_data['post_hoc_pupil_diameter'].rolling(10).std()      
+        
+    if any(trial_data.columns == 'whisker_energy'):
+        whisk_diff = np.concatenate([np.full(1,np.nan),np.diff(trial_data['whisker_energy'])])
+        trial_data['whisker_energy_diff'] = whisk_diff
+        trial_data['whisker_std3'] = trial_data['whisker_energy'].rolling(3).std()      
+        trial_data['whisker_std5'] = trial_data['whisker_energy'].rolling(5).std()      
+        trial_data['whisker_std10'] = trial_data['whisker_energy'].rolling(10).std()     
+    if any(trial_data.columns == 'running_speed'):
+        run_diff = np.concatenate([np.full(1,np.nan),np.diff(trial_data['running_speed'])])
+        trial_data['running_speed_diff'] = run_diff
+        trial_data['running_std3'] = trial_data['running_speed'].rolling(3).std()      
+        trial_data['running_std5'] = trial_data['running_speed'].rolling(5).std()      
+        trial_data['running_std10'] = trial_data['running_speed'].rolling(10).std()     
+        
+    return pd.concat([trial_data, pupil_traces, whisker_traces, running_traces], axis=1) 
 
 
 def fetch_trial_beh_events(trial_data,behavior_events):
