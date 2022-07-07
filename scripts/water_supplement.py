@@ -42,7 +42,7 @@ for mouse in subjects:
                 outcome = np.loadtxt(outcome_file, ndmin=1, dtype=float)
                 rewards.append(len(np.where(outcome==1)[0]))
     water = sum(rewards)*3
-    supplement = (1000-water)/1000
+    supplement = (1250-water)/1000
     if np.less(supplement,0):
         supplement=  0
     print(str(len(rewards)) + ' sessions found for ' + mouse + ' with ' + str(water) + ' ul of water collected on ' + today2 +'\n'

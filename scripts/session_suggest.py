@@ -33,8 +33,8 @@ def generate_suggestion(performance):
         else:
             next_session = 'S1'
     elif performance['stage'][1] == '3':
-        if all([performance['hits_total']>200, performance['hits_left_ratio']<.66, performance['hits_left_ratio']>.33, 
-               performance['hit_rate_right']>.75, performance['hit_rate_left']>.75]):
+        if all([performance['hits_total']>150, performance['hits_left_ratio']<.66, performance['hits_left_ratio']>.33, 
+               performance['hit_rate_right']>.6, performance['hit_rate_left']>.6]):
             next_session = 'S4'
         elif all([performance['hits_total']>100, performance['hits_left_ratio']<.66, performance['hits_left_ratio']>.33]):
             next_session = 'S3'
@@ -45,10 +45,10 @@ def generate_suggestion(performance):
             next_session = 'S1'
     elif performance['stage'][1] =='4':
         if all([performance['hits_total']>200, performance['hits_left_ratio']<.66, performance['hits_left_ratio']>.33, 
-               performance['hit_rate_right']>.75, performance['hit_rate_left']>.75]):
+               performance['hit_rate_right']>.6, performance['hit_rate_left']>.6]):
             next_session = 'S5'
         elif all([performance['hits_total']>100, performance['hits_left_ratio']<.66, performance['hits_left_ratio']>.33, 
-               performance['hit_rate_right']>.75, performance['hit_rate_left']>.75]):
+               performance['hit_rate_right']>.6, performance['hit_rate_left']>.6]):
             next_session = 'S4'
         elif all([performance['hits_total']>100, performance['hits_left_ratio']<.66, performance['hits_left_ratio']>.33]):
             next_session = 'S3'
