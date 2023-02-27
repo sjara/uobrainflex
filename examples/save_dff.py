@@ -13,7 +13,12 @@ import tkinter as tk
 from tkinter import filedialog
 import os
 
-def dff_calculation(image_stack):
+def dff_mean_calculation(image_stack):
+    pixel_median = np.mean(image_stack,axis=0)
+    dff = (image_stack-pixel_median)/pixel_median
+    return dff
+
+def dff_median_calculation(image_stack):
     pixel_median = np.median(image_stack,axis=0)
     dff = (image_stack-pixel_median)/pixel_median
     return dff

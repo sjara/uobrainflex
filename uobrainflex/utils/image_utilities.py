@@ -60,7 +60,7 @@ def import_multi_tif(tif_folder, n_channels=2, down_sample_factor= 2,dtype=np.fl
                 wf_blue[frame:frame+file_frames+1] = np.atleast_3d(block_reduce(im[np.arange(0,len(im),2)],(1,down_sample_factor,down_sample_factor),func=np.mean))
         frame = frame+file_frames
         print('\nFile ' + str(i+1) + ' of ' + str(len(tif_filepaths)) + ' complete')
-    return wf_blue, wf_green
+    return wf_blue[:frame,:,:], wf_green[:frame,:,:]
 
 
 

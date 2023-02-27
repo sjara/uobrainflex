@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 from uobrainflex import config
 
-behavior_measures_keylist = ['pupil_size','whisker_energy','running_speed']
+behavior_measures_keylist = ['pupil_size','whisker_energy','face_energy','running_speed']
 behavior_events_keylist = ['reward_right','reward_left','licks_left','licks_right']
 
 def get_file_path(subject, fileID):
@@ -216,15 +216,16 @@ def read_behavior_measures(nwbFileObj, speriod=0.001, measures=[], filt=True):
     Returns:
         behavior_measures (DataFrame): Dataframe where index = samples, and columns = [measures, timestamps]
     """
-    filt_params = {'whisker_energy': int(.5/speriod)+1, 'pupil_area': int(1/speriod)+1,
+    filt_params = {'whisker_energy': int(.2/speriod)+1, 'face_energy': int(.2/speriod)+1, 'pupil_area': int(1/speriod)+1, ######all whisk data currently at .5
+    # filt_params = {'whisker_energy': int(.2/speriod)+1, 'pupil_area': int(1/speriod)+1,
                    'running_speed': int(.2/speriod)+1,'pupil_diameter':int(1/speriod)+1,
-                   'post_hoc_pupil_diameter':int(1/speriod)+1}
-    zero = {'whisker_energy': True, 'pupil_area': False,
+                   'post_hoc_pupil_diameter':int(.5/speriod)+1,'pupil_size':int(1/speriod)+1}
+    zero = {'whisker_energy': True, 'face_energy': True, 'pupil_area': False,
             'running_speed': False,'pupil_diameter':False,
-            'post_hoc_pupil_diameter':False}
-    norm = {'whisker_energy': True, 'pupil_area': True,
+            'post_hoc_pupil_diameter':False,'pupil_size':False}
+    norm = {'whisker_energy': True, 'face_energy': True, 'pupil_area': True,
             'running_speed': False,'pupil_diameter':True,
-            'post_hoc_pupil_diameter':True}
+            'post_hoc_pupil_diameter':True,'pupil_size':True}
 
     if not measures:
         keys = nwbFileObj.acquisition.keys()
@@ -246,14 +247,18 @@ def read_behavior_measures(nwbFileObj, speriod=0.001, measures=[], filt=True):
     
     # extract all acquisition time series
     for key in measures:
-        ts_data = nwbFileObj.get_acquisition(key).data[:]
+        ts_data = nwbFileObj.get_acquisition(key).data[:]       
         ts_time = nwbFileObj.get_acquisition(key).timestamps[:]
         idx = (ts_time/speriod).round(0).astype(int) # divide by sample period and round to find appropriate index for this measure
         idx = idx[:ts_data.shape[0]]
+        print(idx)
+        print(len(idx))
+        print(len(ts_data))
+        print('')
         behavior_measures.loc[idx,key]=ts_data       # fit data to new sampling
         
     # interpolate dataframe to upsample and make full 
-    behavior_measures = behavior_measures.iloc[:max(max_time).astype(int),:].interpolate(method = 'linear')    
+    behavior_measures = behavior_measures.iloc[:max(max_time).astype(int),:].interpolate(method = 'linear',limit=100)    
 
     # filter and normalize signals if selected
     if filt:
@@ -384,10 +389,11 @@ def fetch_trial_beh_measures(trial_data,behavior_measures):
     measures = behavior_measures.columns
     measure_index = measures.values
     n_measures = len(behavior_measures)-1
-    if any(measure_index == 'pupil_size'):
-        measure_index[np.where(measure_index == 'pupil_diameter')[0][0]] = 'pupil_diameter'
+    # if any(measure_index == 'pupil_size'):
+    #     measure_index[np.where(measure_index == 'pupil_size')[0][0]] = 'pupil_diameter'
             
     pupil_traces =pd.DataFrame({'pupil_trace':[np.full(5000,np.nan)]})
+    face_traces =pd.DataFrame({'face_trace':[np.full(5000,np.nan)]})
     whisker_traces =pd.DataFrame({'whisker_trace':[np.full(5000,np.nan)]})
     running_traces =pd.DataFrame({'running_trace':[np.full(5000,np.nan)]})
 
@@ -407,12 +413,21 @@ def fetch_trial_beh_measures(trial_data,behavior_measures):
             if key == 'post_hoc_pupil_diameter':
                 trace = behavior_measures.loc[start_sample-999:start_sample+4000,key].values
                 pupil_traces.loc[idx,'pupil_trace']=trace
+            if key == 'face_energy':
+                trace = behavior_measures.loc[start_sample-999:start_sample+4000,key].values
+                whisker_traces.loc[idx,'whisker_trace']=trace
             if key == 'whisker_energy':
                 trace = behavior_measures.loc[start_sample-999:start_sample+4000,key].values
                 whisker_traces.loc[idx,'whisker_trace']=trace
             if key == 'running_speed':
                 trace = behavior_measures.loc[start_sample-999:start_sample+4000,key].values
                 running_traces.loc[idx,'running_trace']=trace
+
+    if pupil_traces.index[0] != trial_data.index[0]:
+        pupil_traces = pupil_traces.iloc[1:]
+        whisker_traces = whisker_traces.iloc[1:]
+        face_traces = face_traces.iloc[1:]
+        running_traces = running_traces.iloc[1:]
 
     if any(trial_data.columns == 'pupil_diameter'):
         pupil_diff = np.concatenate([np.full(1,np.nan),np.diff(trial_data['pupil_diameter'])])
@@ -423,19 +438,32 @@ def fetch_trial_beh_measures(trial_data,behavior_measures):
         trial_data['post_hoc_pupil_std3'] = trial_data['post_hoc_pupil_diameter'].rolling(3).std()      
         trial_data['post_hoc_pupil_std5'] = trial_data['post_hoc_pupil_diameter'].rolling(5).std()      
         trial_data['post_hoc_pupil_std10'] = trial_data['post_hoc_pupil_diameter'].rolling(10).std()      
+        trial_data['pupil_CV'] = trial_data['post_hoc_pupil_diameter'].rolling(10).std()/trial_data['post_hoc_pupil_diameter'].rolling(10).mean()           
+    elif any(trial_data.columns == 'pupil_size'):
+        pupil_diff = np.concatenate([np.full(1,np.nan),np.diff(trial_data['pupil_size'])])
+        trial_data['pupil_diameter'] = trial_data['pupil_size']
+        trial_data['pupil_CV'] = trial_data['pupil_size'].rolling(10).std()/trial_data['pupil_size'].rolling(10).mean()           
+        
+    if any(trial_data.columns == 'face_energy'):
+        whisk_diff = np.concatenate([np.full(1,np.nan),np.diff(trial_data['whisker_energy'])])   
+        trial_data['face_std_10'] = trial_data['face_energy'].rolling(10).std() 
+        trial_data['face_CV'] = trial_data['face_energy'].rolling(10).std()/trial_data['face_energy'].rolling(10).mean() 
         
     if any(trial_data.columns == 'whisker_energy'):
         whisk_diff = np.concatenate([np.full(1,np.nan),np.diff(trial_data['whisker_energy'])])
         trial_data['whisker_energy_diff'] = whisk_diff
         trial_data['whisker_std3'] = trial_data['whisker_energy'].rolling(3).std()      
         trial_data['whisker_std5'] = trial_data['whisker_energy'].rolling(5).std()      
-        trial_data['whisker_std10'] = trial_data['whisker_energy'].rolling(10).std()     
+        trial_data['whisker_std10'] = trial_data['whisker_energy'].rolling(10).std() 
+        trial_data['whisker_CV'] = trial_data['whisker_energy'].rolling(10).std()/trial_data['whisker_energy'].rolling(10).mean() 
+        
     if any(trial_data.columns == 'running_speed'):
         run_diff = np.concatenate([np.full(1,np.nan),np.diff(trial_data['running_speed'])])
         trial_data['running_speed_diff'] = run_diff
         trial_data['running_std3'] = trial_data['running_speed'].rolling(3).std()      
         trial_data['running_std5'] = trial_data['running_speed'].rolling(5).std()      
         trial_data['running_std10'] = trial_data['running_speed'].rolling(10).std()     
+        trial_data['running_CV'] = trial_data['running_speed'].rolling(10).std()/trial_data['running_speed'].rolling(10).mean()     
         
     return pd.concat([trial_data, pupil_traces, whisker_traces, running_traces], axis=1) 
 

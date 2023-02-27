@@ -12,7 +12,7 @@ import time
 import cv2
 
 def set_eye_crop(avi_files):
-    cap = cv2.VideoCapture(avi_files[0])
+    cap = cv2.VideoCapture(str(avi_files[0]))
     ret, frame = cap.read()
     plt.figure()
     # for i in range (1000):
@@ -150,7 +150,7 @@ def extract_motion_energy(avi_files,x,y):
     last_frame = np.zeros([np.diff(x)[0],np.diff(y)[0]])
     for i, filename in enumerate(avi_files):
         count = i*10000
-        cap = cv2.VideoCapture(filename)
+        cap = cv2.VideoCapture(str(filename))
         while(cap.isOpened()):
             ret, frame = cap.read()
             if ret == True:
@@ -161,18 +161,19 @@ def extract_motion_energy(avi_files,x,y):
                     else:
                         mins_left = round((total_frames-count)/fps/60)
                     print(str(count) + ' of ' + str(total_frames) + ' frames complete at ' + str(fps) + 'fps. ' + str(mins_left) + ' minutes reamining.')
-                    
                 crop_frame = frame[x[0]:x[1],y[0]:y[1],0]
-                
-                me[count] = np.mean(abs(last_frame-crop_frame))/255
-                count = count+1
-                last_frame = crop_frame
+                if crop_frame.shape[:2] == last_frame.shape[:2]:
+                    me[count] = np.mean(abs(last_frame-crop_frame))/255
+                    count = count+1
+                    last_frame = crop_frame
+                    true_frame_count = true_frame_count+1
+                else:
+                    break
             else:
                 break
         cap.release()
         cv2.destroyAllWindows()   
-            
-    return me
+    return me, true_frame_count
 
 def fit_pupils(avi_files,x,y,threshold,method = 1):
     total_frames = 10000*len(avi_files)
@@ -241,30 +242,36 @@ def pupil_cleanup(pupil_diameter,lookback=30,upper_threshold=1.5,lower_threshold
     clean_pupil_diameter[ind]=np.nan
     
     
-    # ## interpolate across nan values
-    # i=0
-    # while i<len(clean_pupil_diameter):
-    #     i_val =  clean_pupil_diameter[i]
+    ## interpolate across nan values
+    # if interp:
+    #     vals = np.where(pupil_diameter==pupil_diameter)
+    #     nans = np.where(pupil_diameter!=pupil_diameter)
+    #     clean_pupil_diameter = np
         
-    #     if i <len(pupil_diameter)-1:
-    #         j=i+1
-    #         j_val = clean_pupil_diameter[j]
         
-    #     if j_val != j_val:
-    #         while all([j_val!=j_val,j<len(clean_pupil_diameter)-1]):
-    #             j=j+1
-    #             j_val=clean_pupil_diameter[j]     
-    #         clean_pupil_diameter[range(i,j)]=np.interp(range(i,j),[i,j],[i_val,j_val])
-    
-    #     if i==0:
-    #         i=j
-    #     elif all([i_val==i_val,j_val==j_val]):
-    #         while j_val==j_val:
-    #             j=j+1
-    #             j_val=clean_pupil_diameter[j]
-    #         i=j-1    
-    #     elif j==len(clean_pupil_diameter)-1:
-    #         break
+    #     i=0
+    #     while i<len(clean_pupil_diameter):
+    #         i_val =  clean_pupil_diameter[i]
+            
+    #         if i <len(pupil_diameter)-1:
+    #             j=i+1
+    #             j_val = clean_pupil_diameter[j]
+            
+    #         if j_val != j_val:
+    #             while all([j_val!=j_val,j<len(clean_pupil_diameter)]):
+    #                 j=j+1
+    #                 j_val=clean_pupil_diameter[j]     
+    #             clean_pupil_diameter[range(i,j)]=np.interp(range(i,j),[i,j],[i_val,j_val])
+        
+    #         if i==0:
+    #             i=j
+    #         elif all([i_val==i_val,j_val==j_val]):
+    #             while j_val==j_val:
+    #                 j=j+1
+    #                 j_val=clean_pupil_diameter[j]
+    #             i=j-1    
+    #         elif j==len(clean_pupil_diameter)-1:
+                # break
     return clean_pupil_diameter
 
 ########## example ########

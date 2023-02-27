@@ -35,8 +35,8 @@ djBehaviorSession = acquisitionSchema.BehaviorSession()
 all_sessions = djBehaviorSession.fetch(format='frame')
 
 # filter sessions as desired, this could also include a minimum hits/choices per session
-subject = 'BW041'
-training_stage = ['S6']
+subject = 'BW031'
+training_stage = ['S5','S6']
 min_choices = 100
 hmm_sessions = all_sessions.query("subject_id==@subject and behavior_training_stage==@training_stage and choices_total>@min_choices")
 

@@ -133,6 +133,8 @@ def format_choice_behavior_hmm(trial_data, trial_labels, drop_no_response=False,
             true_choice[ind] = int(1)
         if trials['outcome'].iloc[ind] == miss_ind:#if the outcome is a miss, true choice = 2    
             true_choice[ind] = int(2)
+            
+    trials['choice']=true_choice
     
     # create list of choices with [stimulus information, bias constant]
     inpts = [ np.vstack((stim,np.ones(len(stim)))).T ]
@@ -165,15 +167,16 @@ def compile_choice_hmm_data(sessions, get_behavior_measures=False, verbose=True)
     for sess in sessions:
         if verbose:
             print(f'Loading {sess}')
-        nwbFileObj = load.load_nwb_file(sess)
+        nwbFileObj = load.load_nwb_file(str(sess))
         trial_data, trial_labels = load.read_trial_data(nwbFileObj)
         trial_data['file_name'] = os.path.basename(sess)
+        these_inpts, these_true_choices, trials = format_choice_behavior_hmm(trial_data, trial_labels)
         if get_behavior_measures:
             behavior_measures = load.read_behavior_measures(nwbFileObj)
             _ ,behavior_events = load.read_behavior_events(nwbFileObj)
-            trial_data = load.fetch_trial_beh_measures(trial_data, behavior_measures)
-            trial_data = load.fetch_trial_beh_events(trial_data, behavior_events)
-        these_inpts, these_true_choices, trials = format_choice_behavior_hmm(trial_data, trial_labels)
+            trials = load.fetch_trial_beh_measures(trials, behavior_measures)
+            trials = load.fetch_trial_beh_events(trials, behavior_events)
+        # these_inpts, these_true_choices, trials = format_choice_behavior_hmm(trial_data, trial_labels)
         inpts.extend(these_inpts)
         true_choices.extend([these_true_choices])
         hmm_trials.extend([trials])
@@ -291,8 +294,7 @@ def choice_hmm_sate_fit(subject, inpts, true_choices, max_states=4, save_folder=
 def choice_hmm_fit(subject, num_states, inpts, true_choices):
     ## Fit GLM-HMM with MAP estimation:
     # Set the parameters of the GLM-HMM
-    # num_states = 3        # number of discrete states
-    obs_dim = 1           # number of observed dimensions
+    obs_dim = true_choices[0].shape[1]          # number of observed dimensions
     num_categories = len(np.unique(np.concatenate(true_choices)))    # number of categories for output
     input_dim = inpts[0].shape[1]                                    # input dimensions
 
@@ -300,18 +302,38 @@ def choice_hmm_fit(subject, num_states, inpts, true_choices):
     prior_sigma = 2
     prior_alpha = 2
     
-    map_glmhmm = ssm.HMM(num_states, obs_dim, input_dim, observations="input_driven_obs", 
+    hmm = ssm.HMM(num_states, obs_dim, input_dim, observations="input_driven_obs", 
                          observation_kwargs=dict(C=num_categories,prior_sigma=prior_sigma),
                          transitions="sticky", transition_kwargs=dict(alpha=prior_alpha,kappa=0))
     
-    N_iters = 200
-    fit_map_ll = map_glmhmm.fit(true_choices, inputs=inpts, method="em", num_iters=N_iters,
+    N_iters = 1000
+    fit_map_ll = hmm.fit(true_choices, inputs=inpts, method="em", num_iters=N_iters,
                                 tolerance=10**-4)
-    hmm = map_glmhmm
     return hmm
 
-def get_posterior_probs(hmm, true_choices, inpts, hmm_trials, occ_thresh = .8):
+def generate_n_states_hmms(max_states, inpts, true_choices):  
+    subject=[]
+    hmms=[]
+    for num_states in np.arange(1,max_states+1):
+        hmms.append(choice_hmm_fit(subject, num_states, inpts, true_choices))
+    return hmms
+
+def hmm_state_testing(max_states,train_inpts,train_choices,test_inpts,test_choices):
+    subject=[]
+    hmms=[]
+    lls=[]
+
+    for num_states in np.arange(1,max_states+1):
+        hmms.append(choice_hmm_fit(subject, num_states, train_inpts, train_choices))
+    for hmm in hmms:
+        lls.append(hmm.log_probability(test_choices,test_inpts)/np.concatenate(test_inpts).shape[0]*np.log(2))
+    return hmms, lls
+
+
+def get_posterior_probs(hmm, hmm_trials, occ_thresh = .8):
     #pass true data to the model and get state occupancy probabilities
+    true_choices = get_true_choices_from_hmm_trials(hmm_trials)
+    inpts = get_inpts_from_hmm_trials(hmm_trials)
     posterior_probs = [hmm.expected_states(data=data, input=inpt)[0]
                    for data, inpt
                    in zip(true_choices, inpts)]
@@ -373,6 +395,49 @@ def get_true_choices_from_hmm_trials(hmm_trials):
         true_choices.append(these_choices)
     return true_choices
 
+def set_hmm_trials_choices(hmm_trials):
+    for session in hmm_trials:
+        outcomes = session['outcome'].values
+        inpts = np.array(session['inpt'].values)
+        
+        inpts[inpts>0]=1
+        inpts[inpts<0]=-1
+        
+        choices = np.full(len(inpts),2)
+        for i in range(len(outcomes)):
+            if all([outcomes[i]==0,inpts[i]==1]):
+                choices[i]=1
+            elif all([outcomes[i]==0,inpts[i]==-1]):
+                choices[i]=0
+            elif all([outcomes[i]==1,inpts[i]==-1]):
+                choices[i]=1
+            elif all([outcomes[i]==1,inpts[i]==1]):
+                choices[i]=0
+                
+        session['choice']=choices
+    return hmm_trials
+            
+
+def get_true_choices_from_outcomes_hmm_trials(hmm_trials):
+    true_choices=list([])
+    for session in hmm_trials:
+        these_choices = np.full([len(session),1],np.int(2)) 
+        outcomes = session['outcome'].values
+        inpts = session['inpt'].values
+        for i, outcome in enumerate(outcomes):
+            if outcome==0:
+                if inpts[i]>0:
+                    these_choices[i]=1
+                elif inpts[i]<0:
+                    these_choices[i]=0
+            elif outcome==1:
+                if inpts[i]>0:
+                    these_choices[i]=0
+                elif inpts[i]<0:
+                    these_choices[i]=1                  
+        true_choices.append(these_choices)
+    return true_choices
+
 def get_psychos(hmm_trials):  
     all_trials = pd.DataFrame()
     for trials in hmm_trials:
@@ -424,6 +489,65 @@ def compare_psychos(psycho1,psycho2):
         all_similarity.append(similarity)
     return np.array(all_similarity)
 
+
+def hmm_trials_to_all_trials(hmm_trials):
+    all_trials = pd.DataFrame()
+    for trials in hmm_trials:
+        # if all([len(trials.query('hmm_state==0'))>10,np.isin('post_hoc_pupil_diameter',trials.columns)]):
+            all_trials = all_trials.append(trials)
+    return all_trials
+
+def hmm_trials_to_p_state(hmm_trials):
+    all_trials = hmm_trials_to_all_trials(hmm_trials)
+    state_trials = all_trials.query('hmm_state==hmm_state and post_hoc_pupil_diameter==post_hoc_pupil_diameter')
+    state_trials['hmm_state'].iloc[np.where(state_trials['hmm_state']>2)[0]]=2
+
+    bin_size=.02
+    p_state=np.full([int(1/bin_size),3],np.nan)
+    for k,p in enumerate(np.arange(0,1,bin_size)):
+        p2 = p+bin_size
+        p_trials = state_trials.query('post_hoc_pupil_diameter>=@p and post_hoc_pupil_diameter<@p2')
+        if len(p_trials)>0:
+            state,counts = np.unique(p_trials['hmm_state'],return_counts=True)
+            for j in range(len(counts)):
+                if sum(counts)>5:
+                    p_state[k,int(state[j])]=counts[int(j)]/sum(counts)
+    x = np.arange(0,1,bin_size)
+    return p_state, x
+
+def get_optimal_pupil(hmm_trials):
+    p_state, x = hmm_trials_to_p_state(hmm_trials)
+    
+    
+    y= p_state[:,0]
+    
+    x2=x[y==y]
+    y=y[y==y]
+
+    coeffs = np.polyfit(x2,y,2)
+    poly = np.poly1d(coeffs)
+    #poly optimal
+    # xs = np.arange(0,1,.01)
+    # plt.plot(xs,poly(xs),'r',linewidth=2)
+    # plt.ylim([0,1])
+    # plt.xlim([.4,1])
+    
+    poly_optimal_pupil = -coeffs[1]/(coeffs[0]*2)
+    # plt.plot([poly_optimal_pupil,poly_optimal_pupil],[0,1],'r:')
+    
+    
+    # median optimal
+    temp = p_state[:,0]
+    h=[]
+    for ii, d in enumerate(temp):
+        if d==d:
+            for iii in range(round(d*100)):
+                h.append(x[ii])
+    med_opt_pupil = np.median(h)
+    # plt.plot([med_opt_pupil,med_opt_pupil],[0,1],'k:')
+    return med_opt_pupil, poly_optimal_pupil
+        
+    
 
 def permute_hmm(hmm, hmm_trials):
     psycho,_ = get_psychos(hmm_trials)
@@ -818,7 +942,7 @@ def plot_session_summaries(subject, hmm_trials, nwbfilepaths,save_folder ='', me
             hist_lim = [1,.5,1,2500]
             hist_bins = [.025,.01,.025,50]
             xlabels = ['pupil diameter (% max)','running speed (m/s)','whisker energy (a.u.)','reaction time (ms)']
-            for i,measure in enumerate(['pupil_diameter', 'running_speed', 'whisker_energy', 'reaction_time']):
+            for i,measure in enumerate(['post_hoc_pupil_diameter', 'running_speed', 'whisker_energy', 'reaction_time']):
                 if measure in columns:
                     ax = fig.add_subplot(gs[glist[i]])
                     for state in np.unique(these_trials['hmm_state'].dropna()):
@@ -1338,6 +1462,106 @@ def state_measures_by_session_std(subject, hmm_trials, save_folder = ''):
             plt.scatter(state,m,color=cols[int(state)],s=100)
         
             plt.title(measure + ' session variance')
+            
+            
+def p_optimal_by_feature(subject , hmm_trials, save_folder = ''):
+    
+    all_trials = pd.DataFrame()
+    for trials in hmm_trials:
+        if np.unique(trials['hmm_state'])[0]==0:
+            print(1)
+            all_trials = all_trials.append(trials)
+
+    pupil_measure = 'pupil_diameter'    
+    if np.isin('post_hoc_pupil_diameter',all_trials.columns):
+        pupil_measure = 'post_hoc_pupil_diameter'
+    
+    pupil_probs = np.full([3,50],np.nan)
+    face_probs = np.full([3,50],np.nan)
+    whisk_probs = np.full([3,50],np.nan)
+    run_probs = np.full([3,50],np.nan)
+        
+    state_trials = all_trials.query('hmm_state==hmm_state')
+    
+    
+    # good_pupil = state_trials.query('post_hoc_pupil_diameter==post_hoc_pupil_diameter')
+    good_pupil = state_trials.query(pupil_measure + '==' + pupil_measure)
+    good_pupil['hmm_state'].iloc[np.where(good_pupil['hmm_state']>2)[0]]=2
+    bin_size=.02
+    p_state=np.full([int(1/bin_size),3],np.nan)
+    for k,p in enumerate(np.arange(0,1,bin_size)):
+        p2 = p+bin_size
+        p_trials = good_pupil.query(pupil_measure + '>=@p and ' + pupil_measure + '<@p2')
+        if len(p_trials)>0:
+            state,counts = np.unique(p_trials['hmm_state'],return_counts=True)
+            for j in range(len(counts)):
+                if sum(counts)>5:
+                    p_state[k,int(state[j])]=counts[int(j)]/sum(counts)
+                    pupil_probs[int(state[j]),k]=counts[int(j)]/sum(counts)
+    
+    
+    bin_size=.05
+    p_state=np.full([int(1/bin_size),3],np.nan)
+    for k,p in enumerate(np.arange(0,1,bin_size)):
+        p2 = p+bin_size
+        p_trials = good_pupil.query('whisker_energy>=@p and whisker_energy<@p2')
+        if len(p_trials)>0:
+            state,counts = np.unique(p_trials['hmm_state'],return_counts=True)
+            for j in range(len(counts)):
+                if sum(counts)>5:
+                    p_state[k,int(state[j])]=counts[int(j)]/sum(counts)
+                    whisk_probs[int(state[j]),k]=counts[int(j)]/sum(counts)
+    
+    bin_size=.05
+    p_state=np.full([int(1/bin_size),3],np.nan)
+    for k,p in enumerate(np.arange(0,1,bin_size)):
+        p2 = p+bin_size
+        p_trials = good_pupil.query('face_energy>=@p and face_energy<@p2')
+        if len(p_trials)>0:
+            state,counts = np.unique(p_trials['hmm_state'],return_counts=True)
+            for j in range(len(counts)):
+                if sum(counts)>5:
+                    p_state[k,int(state[j])]=counts[int(j)]/sum(counts)
+                    face_probs[int(state[j]),k]=counts[int(j)]/sum(counts)
+    
+    
+    bin_size=.02
+    p_state=np.full([50,3],np.nan)
+    for k,p in enumerate(np.arange(-.02,.3,bin_size)):
+        p2 = p+bin_size
+        if p==.28:
+            p2 = 1
+        if p==-.02:
+            p=-1
+        p_trials = good_pupil.query('running_speed>=@p and running_speed<@p2')
+        if len(p_trials)>0:
+            state,counts = np.unique(p_trials['hmm_state'],return_counts=True)
+            for j in range(len(counts)):
+                if sum(counts)>5:
+                    p_state[k,int(state[j])]=counts[int(j)]/sum(counts)
+                    run_probs[int(state[j]),k]=counts[int(j)]/sum(counts)
+    
+              
+    feat = ['pupil','face','whisk','run']                 
+    plt.figure()
+    for feature,data in enumerate([pupil_probs,face_probs,whisk_probs,run_probs]):
+         plt.subplot(2,4,feature+1)
+         for i in range(3):
+             plt.plot(data[i,:],color=cols[i])
+         plt.title(feat[feature])
+         plt.xticks(range(50),np.arange(0,1,bin_size))
+         
+    feat = [pupil_measure,'face_energy','whisker_energy','running_speed'] 
+    for i, feature in enumerate(feat):
+        data = all_trials[feature]
+        plt.subplot(2,4,i+5)
+        plt.hist(data)
+    
+    plt.suptitle(subject,fontsize=15)
+    
+    if save_folder !='':
+        plt.savefig(save_folder + subject + "_p_opt.png")
+        plt.close()    
 
 def report_cover(subject, nwbfilepath,save_folder):
     trial_data, trial_dict = load.load_trial_data(nwbfilepath)
@@ -1535,3 +1759,4 @@ def generate_report(subject, save_folder):
         # page1_im.save(pdf1_filename, "PDF" ,resolution=100.0, save_all=True)
         cover_page.save(pdf1_filename, "PDF" ,resolution=100.0, save_all=True, append_images=page_list)
 
+    
