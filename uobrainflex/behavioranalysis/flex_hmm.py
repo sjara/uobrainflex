@@ -870,9 +870,12 @@ def plot_dwell_times(subject, hmm_trials, save_folder = ''):
     plt.title(subject + ' State Dwell Times')
     plt.legend(lgnd)
     
-    if save_folder != '':
+    if save_folder == 0:
+        plt.close()
+    elif save_folder != '':
         plt.savefig(save_folder +  subject + "_state_dwelltime_distribution.png")       
         plt.close()
+
         
     return session_transitions
 

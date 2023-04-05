@@ -35,7 +35,7 @@ nwb_paths = glob.glob(base_folder + '*nwbfilepaths.npy')
 hmm_paths = glob.glob(base_folder + '*hmm.npy')
 
 
-fig = plt.figure(figsize=[12,9])
+fig = plt.figure(figsize=[16,12])
 ax = fig.add_axes([0.1, .1, 0.8, .8])
 # Create figure and subplots
 # row1_height = .225
@@ -63,7 +63,7 @@ axE=plt.subplot(position=[.175,.325,.8,.25])
 row3_height = .225
 row3_y = .05
 #planelF
-axF=plt.subplot(position=[.025,.01,.225,.275])
+axF=plt.subplot(position=[.025,.00,.225,.285])
 
 #planelG
 axG=plt.subplot(position=[.3,row3_y,.11,row3_height])
@@ -102,7 +102,7 @@ axA.arrow(1175,625,900-1175,625-625, width=2, color="k",
           head_width=35, head_length=3.5, overhang=10)
 
 axA.text(1300,375,'Reward\nports',ha='center',va='top')
-axA.arrow(1200,400,615-1200,350-400, width=2, color="k",
+axA.arrow(1170,400,615-1150,350-400, width=2, color="k",
           head_width=35, head_length=3.5, overhang=10)
 
 axA.text(1100,15,'Camera',ha='center',va='top')
@@ -113,7 +113,9 @@ axA.arrow(650,125,625-650,180-125, width=2, color="k",
 
 axA.text(350,100,'Screen',ha='center',va='center')
 
+# axA.text(0,0,'A',fontsize=30,ha='right',va='top')
 
+axA.get_xlim()
 
 
 axA.axis('off')
@@ -131,7 +133,7 @@ axB.plot([105,105],[130,127],'k')
 axB.plot([185,185],[130,127],'k')
 axB.plot([265,265],[130,127],'k')
 axB.plot([345,345],[130,127],'k')
-axB.text(185,140,'Stimulus Value',ha='center',va='top')
+axB.text(185,140,'Stimulus value',ha='center',va='top')
 axB.text(25,140,'-1',ha='center',va='top')
 axB.text(345,140,'1',ha='center',va='top')
 axB.text(100,0,'Left-Target',ha='center',va='center')
@@ -139,6 +141,7 @@ axB.text(270,0,'Right-Target',ha='center',va='center')
 
 
 axB.axis('off')
+# axB.text(0,0,'B',fontsize=30,ha='right',va='top')
 
 #panel C
 trial_structure_file = 'E:\\22-10-19-Data\\hmm_trials_nans2\\code\\trial_structure.bmp'
@@ -147,11 +150,13 @@ trial_structure = plt.imread(trial_structure_file)
 axC.imshow(trial_structure)
 axC.text(65,60,'5+/-2 s\nITI',ha='center',va='center')
 axC.text(200,45,'1.2 s\n Stimulus',ha='center',va='center')
+axC.text(270,45,'1 s',ha='center',va='center')
 axC.text(230,82,'Response',ha='center',va='center')
 axC.text(50,110,'Lick',ha='left',va='center')
 
 axC.axis('off')
 
+# axB.text(0,165,'C',fontsize=30,ha='right',va='top')
 
 
 ######gather example subject data
@@ -315,7 +320,7 @@ axD.plot(1.1,np.nanmean(all_psychos[:,2,-1]),color='k',marker=marker[2],markersi
 # all_state_psychos[m,state_ID,:,:] = np.nanmean(all_psychos,axis=0)
 
 axD.set_xticks([-1,-.5,0,.5,1],[-1,'',0,'',1])
-axD.set_xlabel('stimulus value')
+axD.set_xlabel('Stimulus value')
 axD.set_ylim([-.1,1.1])
 axD.set_xlim(-1.4,1.4)
 # plt.title(state_names[state] +'\n n sessions = ' + str(all_psychos.shape[0]))
@@ -329,9 +334,16 @@ axD.set_yticklabels(['0','','0.5','','1'])
 for spine in ['top','right']:
    axD.spines[spine].set_visible(False)
 
+axD.text(-22.5,1.3,'A',fontsize=30,ha='right',va='top')
+axD.text(-12.3,1.3,'B',fontsize=30,ha='right',va='top')
+axD.text(-12.3,.3,'C',fontsize=30,ha='right',va='top')
+axD.text(-3,1.3,'D',fontsize=30,ha='right',va='top')
+
 #Panel E
 ###### 80-100% of posteriors patch for state
 ###### x axis time
+
+axE=plt.subplot(position=[.2,.325,.775,.25])
 
 hand=[]
 lg=[]
@@ -350,8 +362,8 @@ if len(session_dwell.index)>0:
         hand.append(ax.add_patch(Rectangle((0,0),0,0,color=cols[state_similarity[int(session_dwell.loc[idx,'state'])]],alpha=.2)))
         lg.append('state ' + str(idx+1))
         
-axE.add_patch(Rectangle((t[0],1.15), t[-1], .095,color=[.7,.7,.7],alpha=.1,clip_on=False))
-axE.add_patch(Rectangle((t[0],1.05), t[-1], .095,color=[.7,.7,.7],alpha=.2,clip_on=False))
+axE.add_patch(Rectangle((t[0],1.15), t[-1], .095,color=[.7,.7,.7],alpha=.2,clip_on=False))
+axE.add_patch(Rectangle((t[0],1.05), t[-1], .095,color=[.7,.7,.7],alpha=.4,clip_on=False))
 
 for i in range(len(trial_data)):
     choice = trial_data.iloc[i]['choice']
@@ -416,22 +428,22 @@ axE.text(-20,1.3,'Hit',ha='right',va='center')
 
 
 for i,state in enumerate(np.unique(session_dwell['state']).astype(int)):
-    axE.add_patch(Rectangle((-725,.2*(3-i)), 300, .15,color=cols[state_similarity[state]],alpha=.2,clip_on=False))
-axE.text(-825,.2,'HMM state', rotation=90)
+    axE.add_patch(Rectangle((-800,.2*(3-i)), 300, .15,color=cols[state_similarity[state]],alpha=.2,clip_on=False))
+axE.text(-900,.2,'HMM state', rotation=90)
 
-axE.plot(-825,1.15,'ko',alpha = .6,markersize = 7,clip_on=False)
-axE.plot(-725,1.15,'ko',alpha = .6,markersize = 5,clip_on=False)
-axE.plot(-625,1.15,'ko',alpha = .6,markersize = 3,clip_on=False)
-axE.plot(-525,1.15,'ro',alpha = .6,markersize = 3,clip_on=False)
-axE.plot(-425,1.15,'ro',alpha = .6,markersize = 5,clip_on=False)
-axE.plot(-325,1.15,'ro',alpha = .6,markersize = 7,clip_on=False)
-axE.text(-575,1.225,'Stimulus value',horizontalalignment='center')
-axE.text(-825,1.05,'L',horizontalalignment='center',verticalalignment='center')
-axE.text(-325,1.05,'R',horizontalalignment='center',verticalalignment='center')
+axE.plot(-900,1.2,'ko',alpha = .6,markersize = 7,clip_on=False)
+axE.plot(-800,1.2,'ko',alpha = .6,markersize = 5,clip_on=False)
+axE.plot(-700,1.2,'ko',alpha = .6,markersize = 3,clip_on=False)
+axE.plot(-600,1.2,'ro',alpha = .6,markersize = 3,clip_on=False)
+axE.plot(-500,1.2,'ro',alpha = .6,markersize = 5,clip_on=False)
+axE.plot(-400,1.2,'ro',alpha = .6,markersize = 7,clip_on=False)
+axE.text(-650,1.275,'Stimulus value',horizontalalignment='center')
+axE.text(-900,1.1,'L',horizontalalignment='center',verticalalignment='center')
+axE.text(-400,1.1,'R',horizontalalignment='center',verticalalignment='center')
 
 axE.plot([0,t[-1]],[.8,.8],'k--',linewidth=.5)
-axE.plot([-725,-425],[.95,.95],'k',linewidth=5,clip_on=False)
-axE.text(-575,.85,'5 minutes',horizontalalignment='center',verticalalignment='center')
+axE.plot([-800,-500],[.95,.95],'k',linewidth=5,clip_on=False)
+axE.text(-650,.85,'5 minutes',horizontalalignment='center',verticalalignment='center')
 
 axE.text(100,.5,'Left bias',rotation=90,ha='center',va='center')
 axE.text(280,.5,'Disengaged',rotation=90,ha='center',va='center')
@@ -441,6 +453,7 @@ axE.text(3230,.5,'Indeterminate',rotation=90,ha='center',va='center')
 # axE.axis('on') 
 # axE.spines['bottom'].set_visible(True)
 
+axE.text(-1050,1.3,'E',horizontalalignment='center',verticalalignment='center',fontsize=30)
 
 
 #panel F
@@ -448,7 +461,7 @@ GLM_GMM_cartoon_file = 'E:\\22-10-19-Data\\hmm_trials_nans2\\code\\GLM-HMM_carto
 GLM_GMM_cartoon = plt.imread(GLM_GMM_cartoon_file)
 
 axF.imshow(GLM_GMM_cartoon)
-axF.text(640,130,'State 1',ha='left',va='bottom')
+axF.text(970,130,'State 1',ha='right',va='bottom')
 axF.text(1075,250,'.98',ha='left',va='top')
 axF.text(1075,630,'.01',ha='left',va='bottom')
 axF.text(720,690,'.01',ha='left',va='top')
@@ -465,6 +478,7 @@ axF.text(1000,870,'.02',ha='right',va='top')
 
 axF.axis('off') 
 
+axE.text(-1050,-.15,'F',horizontalalignment='center',verticalalignment='center',fontsize=30)
 
 
 
@@ -488,21 +502,27 @@ example_predictive_accuracy = np.load(base_folder + 'BW046_predictive_accuracy.n
 axG.plot(example_LL-example_LL[0],'r') 
 # ax.set_xlabel("N states", fontsize = 12)
 ticks=['1','','','4','','','7']
-axG.set_xticks(range(0,len(example_LL)),ticks)
+axG.set_xticks(range(0,len(example_LL)))
+axG.set_xticklabels(ticks)
 axG.plot(num_states,example_LL[num_states]-example_LL[0],'rs')
 axG.set_xlabel('# HMM states')
 axG.set_ylabel("Δ test LL\n(bits per trial)",
               color="red")
-axG.set_yticks(np.arange(0,.31,.05),['0.0','','0.1','','0.2','','0.3'])
+axG.set_yticks(np.arange(0,.31,.05))
+axG.set_yticklabels(['0.0','','0.1','','0.2','','0.3'])
 ax2=axG.twinx()
 ax2.set_position(axG.get_position())
 ax2.plot(example_predictive_accuracy*100,'k')
-ax2.set_ylabel("Predictive accuracy",
-              color="black")
-ax2.set_yticks(np.arange(70,91,5),['70','','80','','90'])
+ax2.set_ylabel("Predictive accuracy",rotation=270,ha='center',va='bottom')
+ax2.set_yticks(np.arange(70,91,5))
+ax2.set_yticklabels(['70','','80','','90'])
 ax2.spines['top'].set_visible(False)
 axG.spines['top'].set_visible(False)
+axG.spines['left'].set_color('red')
+ax2.spines['left'].set_color('red')
+axG.tick_params(axis='y', colors='red')
 
+axE.text(250,-.15,'G',horizontalalignment='center',verticalalignment='center',fontsize=30)
 
 #Panel H
 axs = [axH,axI,axJ,axK]
@@ -568,5 +588,10 @@ for state, state_ID in enumerate(state_similarity):
     for spine in ['top','right']:
         axs[state].spines[spine].set_visible(False)
 
+axE.text(1500,-.15,'H',horizontalalignment='center',verticalalignment='center',fontsize=30)
 
 
+plt.rcParams.update({'font.size': 15,'font.weight': 'normal','axes.titlesize': 15})
+
+
+plt.savefig('C:\\Users\\admin\\Desktop\\figure dump\\Figure_1.png', dpi=300)

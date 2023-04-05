@@ -1,4 +1,4 @@
-This folder contains code associated with Hulsey et al (2023) *"Transitions between discrete performance states in auditory and visual tasks are predicted by arousal and uninstructed movements"*.
+This folder contains code associated with Hulsey et al (2023) *"Decision-making dynamics are predicted by arousal and uninstructed movements"*.
 
 The `data_processing_code` folder contains scripts to:
 1. Gather subject data from NWB files.
