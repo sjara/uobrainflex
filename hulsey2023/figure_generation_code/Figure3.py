@@ -1,22 +1,13 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Tue May 24 16:47:04 2022
-
-@author: admin
-"""
-
 import os
 import numpy as np
 import glob
 import pandas as pd
-import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon
 from scipy.stats import sem
 from uobrainflex.nwb import loadbehavior as load
 from uobrainflex.behavioranalysis import flex_hmm
 import scipy
 from matplotlib.patches import Rectangle
-
 
 a = '#679292'
 b ='#c41111'
@@ -26,8 +17,18 @@ e ='#f26c2a'
 f = '#ec410d'
 cols = [a,b,c,d,e,f,'k','k','k','k','k','k','k','k']
 
+from matplotlib import rcParams
+rcParams['font.family'] = 'sans-serif'
+rcParams['font.sans-serif'] = ['Tahoma']
+rcParams['font.size']= 15
+rcParams['font.weight']= 'normal'
+rcParams['axes.titlesize']= 15
+rcParams['ytick.labelsize']= 15
+rcParams['xtick.labelsize']= 15
+import matplotlib.pyplot as plt
+
 #get saved hmm_trials paths
-base_folder = 'E:\\Hulsey_et_al_2023\\'
+base_folder = 'D:\\Hulsey\\Hulsey_et_al_2023\\'
 hmm_trials_paths = glob.glob(base_folder + 'hmm_trials\\*hmm_trials.npy')
 
 ax=[]
@@ -37,14 +38,13 @@ fig = plt.figure(figsize=[16,12])
 #### Panel A, image of mouse face
 ax.append(plt.subplot(position=[.025,.7,.3,.275]))
 
-face_file = base_folder +'figure_plotting_code\\mouse_face_annotated.png'
+face_file = base_folder +'images\\mouse_face_annotated.png'
 face_image_data = plt.imread(face_file)
 
 ax[-1].imshow(face_image_data)
 ax[-1].axis('off')
 
 ##### Panel A2, arousal measures traces
-
 #enter index for desired subject and load data
 m=6
 subject = os.path.basename(hmm_trials_paths[m])[:5]
@@ -73,16 +73,12 @@ ax[-1].scatter(st,pupil[trial_range[0]:trial_range[1]],c='k', zorder=10)
 ax[-1].text(range_start_time-2500,.75,'Pupil\ndiameter'
             ,color=[.12, .46, .7],ha='right',va='center')
 
-
 ax[-1].plot(behavior_measures['face_energy'].iloc[range_start_time:range_end_time]/1.5+.025)
 face = trial_data['face_energy'].values
 ax[-1].scatter(st,face[trial_range[0]:trial_range[1]]/1.5+.025,c='k',marker='s', zorder=10)
 ax[-1].text(range_start_time-2500,.35,'Face motion\nenergy'
             ,color=[1, .5, .05],ha='right',va='center')
 
-# ax[-1].plot(behavior_measures['whisker_energy'].iloc[range_start_time:range_end_time]/2+.2)
-# face = trial_data['whisker_energy'].values[430:450]
-# ax[-1].scatter(st,face/2+.2,c='k',marker='s', zorder=10)
 
 ax[-1].plot(behavior_measures['running_speed'].iloc[range_start_time:range_end_time]/3)
 run = trial_data['running_speed'].values
@@ -91,7 +87,7 @@ ax[-1].text(range_start_time-2500,-.1,'Locomotion\nspeed'
             ,color=[.17, .63, .17],ha='right',va='bottom')
 
 for i, trial in enumerate(st):
-    ax[-1].add_patch(Rectangle((round(trial),0), round(1.2*1000), 1,color='k',alpha=.2))
+    ax[-1].add_patch(Rectangle((round(trial),0), round(1.2*1000), 1,color='k',alpha=.2,edgecolor = None,linewidth=0))
     
 if len(session_dwell.index)>0:
     for idx in session_dwell.index: 
@@ -100,7 +96,8 @@ if len(session_dwell.index)>0:
         start_time = trial_data['start_time'].iloc[start_trial]-.5
         duration = trial_data['start_time'].iloc[end_trial] - start_time +1
         ax[-1].add_patch(Rectangle((round(start_time*1000),0), round(duration*1000), 1
-                                   ,color=cols[int(session_dwell.loc[idx,'state'])],alpha=.4))
+                                   ,color=cols[int(session_dwell.loc[idx,'state'])],alpha=.4
+                                   ,edgecolor = None,linewidth=0))
 
 ax[-1].set_xticks([])
 ax[-1].set_xlim([trial_data['start_time'].iloc[trial_range[0]]*1000-4000,
@@ -111,27 +108,32 @@ ax[-1].axis('off')
 
 legend_center = range_start_time-17500
 ax[-1].add_patch(Rectangle((legend_center-13500,-.325), 27000, .125
-                            ,color=[.8,.8,.8],alpha=.4,clip_on=False))
+                            ,color=[.8,.8,.8],alpha=.4,clip_on=False
+                            ,edgecolor = None,linewidth=0))
 ax[-1].text(legend_center,-.275,'HMM states'
             ,color='k',ha='center',va='center')
 
 ax[-1].add_patch(Rectangle((legend_center-13500,-.4875), 27000, .125
-                            ,color=cols[0],alpha=.4,clip_on=False))
+                            ,color=cols[0],alpha=.4,clip_on=False
+                            ,edgecolor = None,linewidth=0))
 ax[-1].text(legend_center,-.4375,'Optimal'
             ,color='k',ha='center',va='center')
 
 ax[-1].add_patch(Rectangle((legend_center+14500,-.4875), 27000, .125
-                            ,color=cols[1],alpha=.4,clip_on=False))
+                            ,color=cols[1],alpha=.4,clip_on=False
+                            ,edgecolor = None,linewidth=0))
 ax[-1].text(legend_center+28000,-.4375,'Disengaged'
             ,color='k',ha='center',va='center')
 
 ax[-1].add_patch(Rectangle((legend_center+42500,-.4875), 27000, .125
-                            ,color=cols[2],alpha=.4,clip_on=False))
+                            ,color=cols[2],alpha=.4,clip_on=False
+                            ,edgecolor = None,linewidth=0))
 ax[-1].text(legend_center+56000,-.4375,'Suboptimal'
             ,color='k',ha='center',va='center')
 
 ax[-1].add_patch(Rectangle((range_start_time+4000,-.275), 1200, .275
-                            ,color='k',alpha=.2,clip_on=False))
+                            ,color='k',alpha=.2,clip_on=False
+                            ,edgecolor = None,linewidth=0))
 ax[-1].text(range_start_time+5500,-.275,'Stimulus'
             ,color='k',ha='left',va='bottom')
 
@@ -155,7 +157,8 @@ if len(session_dwell.index)>0:
         start_time = trial_data['start_time'].iloc[start_trial] - .5
         duration = trial_data['start_time'].iloc[end_trial] - start_time + 1
         ax[-1].add_patch(Rectangle((round(start_time*1000),-.01), round(duration*1000), .885,
-           color=cols[int(session_dwell.loc[idx,'state'])],alpha=.4,clip_on=False))
+           color=cols[int(session_dwell.loc[idx,'state'])],alpha=.4,clip_on=False
+           ,edgecolor = None,linewidth=0))
         
 ax[-1].plot([0,0],[0,.2/3],'k',linewidth=3,clip_on=False)
 ax[-1].text(-75000,.033,'Loc. speed\n20 cm/s',ha='right',va='center')
@@ -293,7 +296,8 @@ for m, mouse_pupil in enumerate(optimal_pupils):
                 optimal_shift[m,:,j]=state_probs[m,:,this_bin]
 
 # Panel C, example polyfit
-i=6 #example mouse ID
+i=6 #example mouse ID -- BW058
+
 ax.append(plt.subplot(position=[.075,.05,.125,.275]))
 
 bin_size=.02
@@ -319,7 +323,6 @@ for state in [2,1,0]:
         ax[-1].set_ylim([0,1])
         
         optimal_pupil = -coeffs[1]/(coeffs[0]*2)
-        # ax[-1].plot([optimal_pupil,optimal_pupil],[.9,1],'k')
 ax[-1].set_xlim([50,100])
 ticks = np.arange(50,101,10)
 labels = ticks
@@ -353,6 +356,7 @@ ax[-1].set_xticks([0,1])
 ax[-1].set_xticklabels(['Auditory','Visual'])
 ax[-1].set_xlim([-.25,1.25])
 
+
 for patch in bp['boxes']:
     patch.set_facecolor([.5,.5,.5])
     patch.set_linewidth(0)
@@ -365,6 +369,9 @@ for line in bp['caps']:
 for line in bp['whiskers']:
     line.set_color('k')
     line.set_linewidth(2)   
+
+ax[-1].plot([0,1],[83,83],'k',clip_on=False,linewidth=2)
+ax[-1].text(.5,84,'* *',ha='center',va='bottom')
 
 ###################### Panel E, delta opt pupil vs state probs
 l=[]
@@ -602,7 +609,7 @@ for j, i in enumerate(ind):
     ax[-1].add_patch(p)
     ax[-1].plot(x[:20],exit_mean,'k',linewidth=2)
 
-ax[-1].add_patch(Rectangle((9.5,.97), 22, .04,color=cols[0],alpha=.4))
+ax[-1].add_patch(Rectangle((9.5,.97), 22, .04,color=cols[0],alpha=.4,edgecolor = None,linewidth=0))
  
 ax[-1].set_xticks([])
 ax[-1].set_xlim([-1,42])
@@ -624,24 +631,20 @@ ax[-1].spines['bottom'].set_visible(False)
 ax[-1].tick_params(axis=u'both', which=u'both',length=0)
 
 
-plt.rcParams.update({'font.size': 15,'font.weight': 'normal','axes.titlesize': 15
-             ,'ytick.labelsize': 15,'xtick.labelsize': 15})
-
 for spine in ['top','right']:
     for axs in ax:
         axs.spines[spine].set_visible(False)
         
         
         
-ax[0].text(-75,50,'A',fontsize=30)
-ax[0].text(-75,625,'B',fontsize=30)
-ax[4].text(28.5,1.05,'C',fontsize=30)
-ax[4].text(105,1.05,'D',fontsize=30)
-ax[4].text(167.5,1.05,'E',fontsize=30)
-ax[4].text(245,1.05,'F',fontsize=30)
-ax[4].text(315,1.05,'G',fontsize=30)
+ax[0].text(-75,50,'a',fontsize=30,weight="bold")
+ax[0].text(-75,625,'b',fontsize=30,weight="bold")
+ax[4].text(28.5,1.05,'c',fontsize=30,weight="bold")
+ax[4].text(105,1.05,'d',fontsize=30,weight="bold")
+ax[4].text(167.5,1.05,'e',fontsize=30,weight="bold")
+ax[4].text(245,1.05,'f',fontsize=30,weight="bold")
+ax[4].text(315,1.05,'g',fontsize=30,weight="bold")
         
-        
-        
-        
-plt.savefig('C:\\Users\\admin\\Desktop\\figure dump\\Figure_3.png', dpi=300)
+
+plt.savefig(base_folder + 'figures\\figure_3.pdf')
+plt.savefig(base_folder + 'figures\\figure_3.png', dpi=300)

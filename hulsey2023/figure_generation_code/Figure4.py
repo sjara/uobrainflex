@@ -4,11 +4,19 @@ import glob
 import pandas as pd
 from sklearn import svm
 from sklearn.model_selection import KFold
-from sklearn import preprocessing
-import matplotlib.pyplot as plt
 from scipy import stats
 from matplotlib import colors
 
+
+from matplotlib import rcParams
+rcParams['font.family'] = 'sans-serif'
+rcParams['font.sans-serif'] = ['Tahoma']
+rcParams['font.size']= 15
+rcParams['font.weight']= 'normal'
+rcParams['axes.titlesize']= 15
+rcParams['ytick.labelsize']= 15
+rcParams['xtick.labelsize']= 15
+import matplotlib.pyplot as plt
 
 def inter_from_256(x):
     return np.interp(x=x,xp=[0,255],fp=[0,1])
@@ -52,7 +60,7 @@ f = '#ec410d'
 cols = [a,b,c,d,e,f,'k']
 
 
-base_folder = 'E:\\Hulsey_et_al_2023\\'
+base_folder = 'D:\\Hulsey\\Hulsey_et_al_2023\\'
 hmm_trials_paths = glob.glob(base_folder + 'hmm_trials\\*hmm_trials.npy')
 
 features = ['post_hoc_pupil_diameter','post_hoc_pupil_std10']
@@ -76,16 +84,10 @@ for trials in hmm_trials:
         all_trials = all_trials.append(trials)
         
 all_trials = all_trials.query('post_hoc_pupil_std10==post_hoc_pupil_std10')
-# all_trials = all_trials.query('face_std_10==face_std_10')
-# all_trials = all_trials.query('running_std10==running_std10')
-# all_trials['movement'] = stats.zscore(all_trials['face_energy']) + stats.zscore(all_trials['running_speed'])
-# all_trials['movement_std'] = stats.zscore(all_trials['face_std_10']) + stats.zscore(all_trials['running_std10'])
 
 for feature in features:
     all_trials[feature] = all_trials[feature]-min(all_trials[feature])
     all_trials[feature] = all_trials[feature]/max(all_trials[feature])
-
-# best_features=[[0,1]]
 
 opt_trials = all_trials.query('hmm_state==0')
 opt_trials = opt_trials.iloc[np.random.permutation(len(opt_trials))]
@@ -165,11 +167,6 @@ p=ax[-1].scatter(dis_test_feature[0,:]*100,dis_test_feature[1,:]*100,color=cols[
 p.set_edgecolor('k')
 ax[-1].set_ylabel('10 trial pupil std. (norm)')
 ax[-1].set_xlabel('Pupil diameter (norm)')
-# cbar = fig.colorbar(color_mesh,ax=ax[-1],location='right')
-# fig.colorbar(color_mesh, ax=ax[0], shrink=0.6, location='bottom')
-# fig.colorbar(color_mesh, ax=ax[0], shrink=0.6)
-# cbar.set_ticks(np.arange(-1,1.1,.5),)
-# cbar.ax.set_yticks([-1,-0.5,0,0.5,1])
 ax[-1].text(117,105,'Disengaged',ha='center',va='bottom')
 ax[-1].text(117,-5,'Optimal',ha='center',va='top')
 ax[-1].text(109,50,'Decision function',ha='right',va='center',rotation=90)
@@ -222,8 +219,6 @@ ax[-1].text(.825,225,'z = ' + str(this_z.round(2)),color='#2278B5',ha='right')
 ax[-1].set_ylabel('Shuffle count')
 ax[-1].set_xlabel('Classification accuracy (%)')
 
-
-# ax.append(plt.subplot(1,3,3))
 ax.append(plt.subplot(position=[.75,.125,.225,.75]))
 
 cols=['k','m','#2278B5','#F57F20','#2FA148','r','k','#F57F20','#2FA148']
@@ -235,7 +230,7 @@ for i in idx:#range(z_scores.shape[-1]):
     
     these_accs=these_accs[these_accs==these_accs]
     these_z=these_z[these_z==these_z]
-    l.append(plt.plot(these_accs,these_z,'o',color=cols[i],alpha=.5))
+    l.append(plt.scatter(these_accs,these_z,color=cols[i],alpha=.5,linewidth=0,edgecolor=None))
     
 for i in idx:#range(z_scores.shape[-1]):
     these_accs = accuracies[:,:,i]
@@ -246,13 +241,8 @@ for i in idx:#range(z_scores.shape[-1]):
     plt.errorbar(these_accs.mean(),these_z.mean(),yerr=stats.sem(these_z),xerr=stats.sem(these_accs),color=cols[i],linewidth=4)
 lg=[]
 
-# legend=['All measures','pupil+movement index','Pupil diameter','Face m.e.','Locomotion speed','Movement index','Shuffle pupil diameter','Shuffle face m.e.','Shuffle loc. speed']
-# for i in idx:
-#     lg.append(legend[i])
 lg = ['All measures','Movement index','Pupil Diaemter']
     
-# lg[-1]='Face + locomotion'
-
 plt.legend(lg)
 plt.ylabel('z-score')
 plt.xlabel('Classification accuracy (%)')
@@ -264,16 +254,14 @@ plt.xticks(np.arange(.5,1.1,.25),np.arange(50,101,25))
 plt.yticks(np.arange(0,11,2))
 ############
 
-
-plt.rcParams.update({'font.size': 15,'font.weight': 'normal','axes.titlesize': 15
-             ,'ytick.labelsize': 15,'xtick.labelsize': 15})
-
 for spine in ['top','right']:
     for axs in ax:
         axs.spines[spine].set_visible(False)
         
-ax[0].text(-25,102,'A',fontsize=30)
-ax[0].text(140,102,'B',fontsize=30)
-ax[0].text(267,102,'C',fontsize=30)
+ax[0].text(-25,102,'a',fontsize=30,weight="bold")
+ax[0].text(140,102,'b',fontsize=30,weight="bold")
+ax[0].text(267,102,'c',fontsize=30,weight="bold")
 
-plt.savefig('C:\\Users\\admin\\Desktop\\figure dump\\Figure_4.png', dpi=300)
+
+plt.savefig(base_folder + 'figures\\figure_4.pdf')
+plt.savefig(base_folder + 'figures\\figure_4.png', dpi=300)

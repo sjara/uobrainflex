@@ -38,7 +38,6 @@ import scipy.ndimage.morphology as ni
 #         print('\nFile ' + str(i+1) + ' of ' + str(len(tif_filepaths)) + ' complete')
 #     return wf_blue, wf_green
 
-
 def import_multi_tif(tif_folder, n_channels=2, down_sample_factor= 2,dtype=np.float16):
     tif_filepaths = glob.glob(os.path.join(tif_folder + '\*.tif'))
     print('\n' + str(len(tif_filepaths)) + ' file(s) to process')
@@ -61,9 +60,6 @@ def import_multi_tif(tif_folder, n_channels=2, down_sample_factor= 2,dtype=np.fl
         frame = frame+file_frames
         print('\nFile ' + str(i+1) + ' of ' + str(len(tif_filepaths)) + ' complete')
     return wf_blue[:frame,:,:], wf_green[:frame,:,:]
-
-
-
 
 def set_transform_anchors(stationary_image, warp_image):
     figure = plt.figure()
@@ -114,6 +110,16 @@ def reduce_mask_overlap(masks):
         this_mask[overlap[0],overlap[1]]=0
         masks[i,:,:]=this_mask
     return masks
+
+def transform_masks(static_image,masks,static_points,warp_points):
+    t_mask = np.full([masks.shape[0],static_image.shape[0],static_image.shape[1]],0)
+    for i in range(masks.shape[0]):
+        this_mask = masks[i,:,:]
+        this_mask[this_mask!=0]=.5
+        new_mask = transform_image(static_image,this_mask,static_points, warp_points)
+        new_mask[new_mask>0]=1
+        t_mask[i,:,:] =new_mask
+    return t_mask
 
 def masks_to_outlines(masks):
     outlines = np.zeros(masks.shape,dtype=np.int8)

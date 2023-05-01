@@ -2,18 +2,21 @@ import os
 import numpy as np
 import glob
 import pandas as pd
-import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon
 from scipy.stats import sem
-from scipy.stats import ttest_rel
-from scipy.stats import ttest_ind
-from uobrainflex.nwb import loadbehavior as load
-import ssm
 from uobrainflex.behavioranalysis import flex_hmm
-from scipy.stats import ranksums
-from scipy.stats import mannwhitneyu
-from scipy import stats
 from matplotlib.patches import Rectangle
+
+from matplotlib import rcParams
+rcParams['font.family'] = 'sans-serif'
+rcParams['font.sans-serif'] = ['Tahoma']
+rcParams['font.size']= 15
+rcParams['font.weight']= 'normal'
+rcParams['axes.titlesize']= 15
+rcParams['ytick.labelsize']= 15
+rcParams['xtick.labelsize']= 15
+import matplotlib.pyplot as plt
+
 
 def pdur(val,dur):
      return (1-val)*val**(dur-1)    
@@ -35,15 +38,7 @@ def get_psychos(hmm_trials):
     return psycho, xvals   
 
 def compare_psychos(psycho1,psycho2):
-    all_similarity=[]
-    
-    # missing_values = np.unique(np.where(psycho1!=psycho1)[2])
-    # missing_values2 = np.unique(np.where(psycho2!=psycho2)[2])
-    # missing_vals = np.unique(np.concatenate([missing_values,missing_values2]))
-    
-    # psycho1 = np.delete(psycho1,missing_vals,axis=2)
-    # psycho2 = np.delete(psycho2,missing_vals,axis=2)
-    
+    all_similarity=[]    
     for state in psycho2:
         similarity=[]
         for state2 in psycho1:
@@ -62,11 +57,9 @@ e ='#f26c2a'
 f = '#ec410d'
 cols = [a,b,c,d,e,f]
 
-
-base_folder = 'E:\\22-10-19-Data\\hmm_trials_nans2\\'
-hmm_paths = glob.glob(base_folder + '*hmm.npy')
-hmm_trials_paths = glob.glob(base_folder + '*hmm_trials.npy')
-nwb_paths = glob.glob(base_folder + '*nwbfilepaths.npy')
+base_folder = 'D:\\Hulsey\\Hulsey_et_al_2023\\'
+hmm_paths = glob.glob(base_folder + 'hmms\\*hmm.npy')
+hmm_trials_paths = glob.glob(base_folder + 'hmm_trials\\*hmm_trials.npy')
 
 all_state_params  = np.full([len(hmm_trials_paths),6,2,2],np.nan) 
 all_state_psychos = np.full([len(hmm_trials_paths),6,3,6],np.nan)
@@ -80,14 +73,13 @@ rm = np.full([len(hmm_trials_paths),6],np.nan)
 all_state_occupancy=[]
 all_state_similarity=[]
 state_stay_prob=np.full([len(hmm_trials_paths),6],np.nan)
-ys = np.full([len(hmm_paths),6,21],np.nan)
-median_dwell = np.full([len(hmm_paths),6],np.nan)
-mean_dwell = np.full([len(hmm_paths),6],np.nan)
+ys = np.full([len(hmm_trials_paths),6,21],np.nan)
+median_dwell = np.full([len(hmm_trials_paths),6],np.nan)
+mean_dwell = np.full([len(hmm_trials_paths),6],np.nan)
 subjects=[]
 dwell_histograms=np.full([len(hmm_trials_paths),3,100],np.nan)
 dwell_CDFs=np.full([len(hmm_trials_paths),3,500],np.nan)
 
-# plt.figure()
 for m, mouse_path in enumerate(hmm_trials_paths):
     print(mouse_path)
     subject = os.path.basename(mouse_path)[:5]    
@@ -153,9 +145,7 @@ for m, mouse_path in enumerate(hmm_trials_paths):
     all_state_similarity.append(state_similarity)
     for ii, state in enumerate(state_similarity):
         state_stay_prob[m,state] = trans_mat[ii,ii]
-    #########
     dwell_data = flex_hmm.plot_dwell_times(subject, hmm_trials,0)
-    #########
     mouse_dwells=pd.DataFrame()
     all_dwells=pd.DataFrame()
     for this_data in dwell_data:
@@ -166,7 +156,6 @@ for m, mouse_path in enumerate(hmm_trials_paths):
                 mouse_dwells = mouse_dwells.append(this_data)
         else:
             mouse_dwells = mouse_dwells.append(this_data)
-
         all_dwells = all_dwells.append(this_data)
         
        
@@ -185,21 +174,12 @@ for m, mouse_path in enumerate(hmm_trials_paths):
         print(np.median(data))
         median_dwell[m,state_similarity[int(state)]] = np.median(data)
         mean_dwell[m,state_similarity[int(state)]] = np.mean(data)
-
-        
-
     
     # now we have state_similarity variable
         
     for state in range(6):
         if len(all_trials.query('hmm_state==@state'))>0:
-            if len(all_trials.query('hmm_state==@state'))>20:
-                # plt.figure(state_similarity[state])
-                # plt.subplot(4,4,m+1)
-                # plt.plot(psychos[state,:,:].T)
-                # plt.ylim([0,1])
-                # plt.title(subject)
-                
+            if len(all_trials.query('hmm_state==@state'))>20:             
                 lft_h = len(all_trials.query('hmm_state==@state and inpt<0 and choice==0'))/len(all_trials.query('hmm_state==@state and inpt<0'))
                 lft_e = len(all_trials.query('hmm_state==@state and inpt<0 and choice==1'))/len(all_trials.query('hmm_state==@state and inpt<0'))
                 lft_m = len(all_trials.query('hmm_state==@state and inpt<0 and choice==2'))/len(all_trials.query('hmm_state==@state and inpt<0'))
@@ -252,8 +232,8 @@ ax[z].set_xticklabels(['L','\noptimal','R','L','\ndisengaged','R','L','\nbias le
             'L','\navoid right','R','L','\nbias right','R','L','\navoid left','R'])
  
 
-labels = ['Optimal\n(N mice = 13/13)','Disengaged\n(13/13)','Bias left\n(6/13)'
- ,'Avoid right\n(4/13)','Bias right\n(5/13)','Avoid left\n(5/13)']
+labels = ['Optimal\n(N mice = 13/13)','Disengaged\n(13/13)','Bias left\n(6/13)',
+          'Avoid right\n(4/13)','Bias right\n(5/13)','Avoid left\n(5/13)']
 xs = [.5,3.5,6.5,9.5,12.5,15.5]
 for i in range(len(labels)):
     ax[0].text(xs[i],1.1,labels[i],ha='center',va='bottom')
@@ -263,9 +243,7 @@ ax[2].patch.set_alpha(0)
 
 
 for i in range(6):
-    ax[0].add_patch(Rectangle([-.6+i*3,-2.4], 2.2, 3.4,color=cols[i],alpha=.2,clip_on=False))
-
-
+    ax[0].add_patch(Rectangle([-.6+i*3,-2.4], 2.2, 3.4,color=cols[i],alpha=.2,clip_on=False,edgecolor = None,linewidth=0))
 
   
 ####
@@ -318,11 +296,7 @@ l=[]
 alpha = .2
 basex= np.arange(0,500)
 for state in range(3):
-    # mode_data = optimal_shift[:,state,:]
-    # if i ==2:
-    #     mode_data = np.nansum(shifted_pupil_bins[:,i:,:],axis=1)
     mode_data = dwell_CDFs[:,state,:]
-
 
     mean=[]
     lower=[]
@@ -353,7 +327,6 @@ for state in range(3):
 ax[-1].set_ylabel('Cumulative probability')
 ax[-1].set_xlabel('Dwell time (# trials)')
 ax[-1].set_yticks(np.arange(0,1.1,.25))
-# plt.xscale('log')
 
 
 ax.append(fig.add_axes([0.56,0.16,.125,.15]))
@@ -400,15 +373,11 @@ ax[-1].plot([0,2],[170,170],'k',clip_on=False)
 ax[-1].text(1,240,'* * *',ha='center',va='top')
 ax[-1].set_ylim([7,120])
 
-
 ax.append(plt.subplot(position=[0.775,0.11,.125,.29]))
 
-base_folder = 'E:\\22-10-19-Data\\hmm_trials_nans2\\'
-predictive_accuracy = np.load(base_folder + 'choice_prediction_accuracy.npy')
-
+predictive_accuracy = np.load(base_folder + 'misc\\choice_prediction_accuracy.npy')
 p_acc_one = predictive_accuracy[:,1,0,:].mean(axis=1)*100
 p_acc_best= predictive_accuracy[:,1,1,:].mean(axis=1)*100
-
 
 bplot = ax[-1].boxplot([p_acc_one,p_acc_best],showfliers=False,patch_artist=True)
 
@@ -444,17 +413,15 @@ ax[-1].text(1.5,95,'* * *',ha='center',va='bottom')
 ax[-1].set_ylim([45,93])
 
 
-plt.rcParams.update({'font.size': 15,'font.weight': 'normal','axes.titlesize': 15
-                     ,'ytick.labelsize': 15,'xtick.labelsize': 15})
-
 for spine in ['top','right']:
     for axs in ax:
         axs.spines[spine].set_visible(False)
 
 
-ax[0].text(-2.5,1.25,'A',fontsize=30)
-ax[0].text(-2.75,-3.25,'B',fontsize=30)
-ax[0].text(5,-3.25,'C',fontsize=30)
-ax[0].text(13,-3.25,'D',fontsize=30)
+ax[0].text(-2.5,1.25,'a',fontsize=30,weight="bold")
+ax[0].text(-2.75,-3.25,'b',fontsize=30,weight="bold")
+ax[0].text(5,-3.25,'c',fontsize=30,weight="bold")
+ax[0].text(13,-3.25,'d',fontsize=30,weight="bold")
 
-plt.savefig('C:\\Users\\admin\\Desktop\\figure dump\\Figure_2.png', dpi=300)
+plt.savefig(base_folder + 'figures\\figure_2.pdf')
+plt.savefig(base_folder + 'figures\\figure_2.png', dpi=300)
