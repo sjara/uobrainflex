@@ -314,10 +314,10 @@ axD.set_yticklabels(['0','','0.5','','1'])
 for spine in ['top','right']:
    axD.spines[spine].set_visible(False)
 
-axD.text(-22.5,1.3,'a',fontsize=30,ha='right',va='top',weight="bold")
-axD.text(-12.3,1.3,'b',fontsize=30,ha='right',va='top',weight="bold")
-axD.text(-12.3,.3,'c',fontsize=30,ha='right',va='top',weight="bold")
-axD.text(-3,1.3,'d',fontsize=30,ha='right',va='top',weight="bold")
+axD.text(-22.5,1.3,'A',fontsize=30,ha='right',va='top')
+axD.text(-12.3,1.3,'B',fontsize=30,ha='right',va='top')
+axD.text(-12.3,.3,'C',fontsize=30,ha='right',va='top')
+axD.text(-3,1.3,'D',fontsize=30,ha='right',va='top')
 
 #Panel E
 axE=plt.subplot(position=[.2,.325,.775,.25])
@@ -414,7 +414,7 @@ axE.text(1100,.5,'Optimal',rotation=90,ha='center',va='center')
 axE.text(1942,.5,'Right bias',rotation=90,ha='center',va='center')
 axE.text(3230,.5,'Indeterminate',rotation=90,ha='center',va='center')
 
-axE.text(-1050,1.3,'e',horizontalalignment='center',verticalalignment='center',fontsize=30,weight="bold")
+axE.text(-1050,1.3,'E',horizontalalignment='center',verticalalignment='center',fontsize=30)
 
 
 #panel F
@@ -422,24 +422,24 @@ GLM_GMM_cartoon_file = base_folder + 'images\\GLM-HMM_cartoon.png'
 GLM_GMM_cartoon = plt.imread(GLM_GMM_cartoon_file)
 
 axF.imshow(GLM_GMM_cartoon)
-axF.text(970,130,'State 1',ha='right',va='bottom')
-axF.text(1075,250,'.98',ha='left',va='top')
-axF.text(1075,630,'.01',ha='left',va='bottom')
-axF.text(720,690,'.01',ha='left',va='top')
+axF.text(2024,295,'State 1',ha='right',va='bottom')
+axF.text(2269,539,'.98',ha='left',va='top')
+axF.text(2269,1264,'.01',ha='left',va='bottom')
+axF.text(1495,1450,'.01',ha='left',va='top')
 
-axF.text(270,1450,'State 2',ha='left',va='top')
-axF.text(650,1100,'.02',ha='left',va='bottom')
-axF.text(475,885,'.03',ha='right',va='bottom')
-axF.text(130,1307,'.95',ha='right',va='bottom')
+axF.text(535,3018,'State 2',ha='left',va='top')
+axF.text(1426,2224,'.02',ha='left',va='bottom')
+axF.text(976,1764,'.03',ha='right',va='bottom')
+axF.text(280,2724,'.95',ha='right',va='bottom')
 
-axF.text(1230,1170,'State\nn',ha='center',va='center')
-axF.text(1360,1450,'.97',ha='right',va='top')
-axF.text(975,1275,'.01',ha='right',va='top')
-axF.text(1000,870,'.02',ha='right',va='top')
+axF.text(2574,2420,'State\nn',ha='center',va='center')
+axF.text(2828,3018,'.97',ha='right',va='top')
+axF.text(1975,2705,'.01',ha='right',va='top')
+axF.text(2044,1911,'.02',ha='right',va='top')
 
 axF.axis('off') 
 
-axE.text(-1050,-.15,'f',horizontalalignment='center',verticalalignment='center',fontsize=30,weight="bold")
+axE.text(-1050,-.15,'F',horizontalalignment='center',verticalalignment='center',fontsize=30)
 
 #Panel G
 
@@ -477,7 +477,7 @@ axG.spines['left'].set_color('red')
 ax2.spines['left'].set_color('red')
 axG.tick_params(axis='y', colors='red')
 
-axE.text(250,-.15,'g',horizontalalignment='center',verticalalignment='center',fontsize=30,weight="bold")
+axE.text(250,-.15,'G',horizontalalignment='center',verticalalignment='center',fontsize=30)
 
 #Panel H
 axs = [axH,axI,axJ,axK]
@@ -542,7 +542,7 @@ for state, state_ID in enumerate(state_similarity):
     for spine in ['top','right']:
         axs[state].spines[spine].set_visible(False)
 
-axE.text(1500,-.15,'h',horizontalalignment='center',verticalalignment='center',fontsize=30,weight="bold")
+axE.text(1500,-.15,'H',horizontalalignment='center',verticalalignment='center',fontsize=30)
 
 
 plt.savefig(base_folder + 'figures\\figure_1.pdf')

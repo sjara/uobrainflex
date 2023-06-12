@@ -637,13 +637,13 @@ for spine in ['top','right']:
         
         
         
-ax[0].text(-75,50,'a',fontsize=30,weight="bold")
-ax[0].text(-75,625,'b',fontsize=30,weight="bold")
-ax[4].text(28.5,1.05,'c',fontsize=30,weight="bold")
-ax[4].text(105,1.05,'d',fontsize=30,weight="bold")
-ax[4].text(167.5,1.05,'e',fontsize=30,weight="bold")
-ax[4].text(245,1.05,'f',fontsize=30,weight="bold")
-ax[4].text(315,1.05,'g',fontsize=30,weight="bold")
+ax[0].text(-75,50,'A',fontsize=30)
+ax[0].text(-75,625,'B',fontsize=30)
+ax[4].text(28.5,1.05,'C',fontsize=30)
+ax[4].text(105,1.05,'D',fontsize=30)
+ax[4].text(167.5,1.05,'E',fontsize=30)
+ax[4].text(245,1.05,'F',fontsize=30)
+ax[4].text(315,1.05,'G',fontsize=30,)
         
 
 plt.savefig(base_folder + 'figures\\figure_3.pdf')

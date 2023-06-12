@@ -418,10 +418,10 @@ for spine in ['top','right']:
         axs.spines[spine].set_visible(False)
 
 
-ax[0].text(-2.5,1.25,'a',fontsize=30,weight="bold")
-ax[0].text(-2.75,-3.25,'b',fontsize=30,weight="bold")
-ax[0].text(5,-3.25,'c',fontsize=30,weight="bold")
-ax[0].text(13,-3.25,'d',fontsize=30,weight="bold")
+ax[0].text(-2.5,1.25,'A',fontsize=30)
+ax[0].text(-2.75,-3.25,'B',fontsize=30)
+ax[0].text(5,-3.25,'C',fontsize=30)
+ax[0].text(13,-3.25,'D',fontsize=30)
 
 plt.savefig(base_folder + 'figures\\figure_2.pdf')
 plt.savefig(base_folder + 'figures\\figure_2.png', dpi=300)

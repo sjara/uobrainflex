@@ -258,9 +258,9 @@ for spine in ['top','right']:
     for axs in ax:
         axs.spines[spine].set_visible(False)
         
-ax[0].text(-25,102,'a',fontsize=30,weight="bold")
-ax[0].text(140,102,'b',fontsize=30,weight="bold")
-ax[0].text(267,102,'c',fontsize=30,weight="bold")
+ax[0].text(-25,102,'A',fontsize=30)
+ax[0].text(140,102,'B',fontsize=30)
+ax[0].text(267,102,'C',fontsize=30)
 
 
 plt.savefig(base_folder + 'figures\\figure_4.pdf')

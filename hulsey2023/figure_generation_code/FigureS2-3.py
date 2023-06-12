@@ -159,15 +159,15 @@ fig = plt.figure(figsize=[18,20])
 for i, m in enumerate(mouse_order):
     mouse_rsqs = rsqs[m,:,:]
     mouse_rsqs = np.mean(mouse_rsqs,axis=1)
-    sp_ind = i*2+1
+    sp_ind = i*2+5
 
     if i==11:
-        sp_ind = 25
-    if i==12:
         sp_ind = 29
+    if i==12:
+        sp_ind = 33
             
     
-    plt.subplot(8,4,sp_ind+1)
+    plt.subplot(9,4,sp_ind+1)
     mouse_state_probs = state_probs[m,:,:]
     for i,state_prob in enumerate(mouse_state_probs):
         plt.plot(bins_lower,state_prob,color=cols[i],zorder=10-i)
@@ -193,9 +193,9 @@ for i, m in enumerate(mouse_order):
     plt.xlim([.25,1])
     plt.xticks(np.arange(.25,1.1,.125),['0.25','','0.5','','0.75','','1.00'])
     plt.yticks([0,.5,1])
-    if sp_ind==19:
+    if sp_ind==23:
         plt.xlabel('Pupil diameter (%max)')
-    elif sp_ind==29:
+    elif sp_ind==33:
         plt.xlabel('Pupil diameter (%max)')
     else:
         plt.xticks(np.arange(.25,1.1,.125),[])
@@ -204,13 +204,13 @@ for i, m in enumerate(mouse_order):
     
     plt.ylabel('p(state)')
     
-    plt.subplot(8,4,sp_ind)
+    plt.subplot(9,4,sp_ind)
     plt.plot(np.arange(1,8),mouse_rsqs,'k')
     plt.plot(poly_degree[m],mouse_rsqs[poly_degree[m]-1],'sk')
     plt.xticks(np.arange(1,8,1),[1,'',3,'',5,'',7])
-    if sp_ind==19:
+    if sp_ind==23:
         plt.xlabel('Polynomial degree')
-    elif sp_ind==29:
+    elif sp_ind==33:
         plt.xlabel('Polynomial degree')
     else:
         plt.xticks(np.arange(1,8,1),[])
@@ -276,6 +276,53 @@ for spine in ['top','right']:
     for axs in fig.axes:
         axs.spines[spine].set_visible(False)
 
+ax = plt.subplot(9,1,1)
+plt.text(.2175,-.1,'Auditory task',ha='center',fontsize=20)
+plt.text(.75,-.1,'Visual task',ha='center',fontsize=20)
+
+plt.text(.1,.9,'Polynomial fit',ha='center',va='top')
+
+
+plt.text(.3,.9,'Optimal\npupil diameter',ha='center',va='top')
+plt.plot([.25,.25],[.6,.9],'k--')
+
+plt.text(.5,.9,'Optimal state',ha='center',va='top')
+plt.plot([.465,.535],[.675,.675],color=cols[0],linewidth=3)
+
+
+plt.text(.7,.9,'Sub-optimal state',ha='center',va='top')
+plt.plot([.665,.735],[.675,.675],color=cols[2],linewidth=3)
+
+plt.text(.9,.9,'Disengaged state',ha='center',va='top')
+plt.plot([.865,.935],[.675,.675],color=cols[1],linewidth=3)
+
+plt.xticks([])
+plt.yticks([])
+
+
+y= np.array([.575,.7,.575])
+x2= np.array([.065,.1,.135])
+opt_xs = np.arange(x2[0],x2[-1],.001)
+this_poly_degree = 2
+
+coeffs = np.polyfit(x2.astype(np.float32),y.astype(np.float32),this_poly_degree)
+this_poly = np.poly1d(coeffs)
+
+ys = this_poly(opt_xs)
+# this_opt_pupil = opt_xs[ys.argmax()].round(5)
+# optimal_pupils[m]=this_opt_pupil
+  
+plt.plot(opt_xs,ys,'k',zorder=10)
+plt.xlim([0,1]) 
+
+
+
+for spine in ['top','bottom','left','right']:
+    ax.spines[spine].set_visible(False)
+
+
+plt.ylim([0,1])
+plt.xlim([0,1])
 plt.savefig(base_folder + 'figures\\figure_S2.pdf')
 plt.savefig(base_folder + 'figures\\figure_S2.png', dpi=300)
 
