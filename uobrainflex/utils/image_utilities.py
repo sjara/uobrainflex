@@ -38,28 +38,80 @@ import scipy.ndimage.morphology as ni
 #         print('\nFile ' + str(i+1) + ' of ' + str(len(tif_filepaths)) + ' complete')
 #     return wf_blue, wf_green
 
+#####################
+# functions for handling widefield one photon calcium imaging data
+
 def import_multi_tif(tif_folder, n_channels=2, down_sample_factor= 2,dtype=np.float16):
     tif_filepaths = glob.glob(os.path.join(tif_folder + '\*.tif'))
     print('\n' + str(len(tif_filepaths)) + ' file(s) to process')
-    frame = 0 
+    blue_frame = 0 
+    green_frame = 0 
     for i, image_path in enumerate(tif_filepaths):
         im = io.imread(image_path)
         im = np.array(im,dtype=dtype)
-        file_frames = int(im.shape[0]/down_sample_factor)
+        file_frames = round(im.shape[0]/down_sample_factor)
         
         if n_channels==2:
             if i == 0:
                 wf_blue = np.ndarray([len(tif_filepaths)*file_frames, int(im.shape[1]/down_sample_factor), int(im.shape[2]/down_sample_factor)])
                 wf_green = np.ndarray([len(tif_filepaths)*file_frames, int(im.shape[1]/down_sample_factor), int(im.shape[2]/down_sample_factor)])
-                   
-            wf_green[frame:frame+file_frames]= np.atleast_3d(block_reduce(im[np.arange(1,len(im),2)],(1,down_sample_factor,down_sample_factor),func=np.mean))
-            if file_frames == im.shape[0]/down_sample_factor:
-                wf_blue[frame:frame+file_frames] = np.atleast_3d(block_reduce(im[np.arange(0,len(im),2)],(1,down_sample_factor,down_sample_factor),func=np.mean))
-            else:
-                wf_blue[frame:frame+file_frames+1] = np.atleast_3d(block_reduce(im[np.arange(0,len(im),2)],(1,down_sample_factor,down_sample_factor),func=np.mean))
-        frame = frame+file_frames
+                
+            if blue_frame == green_frame:
+                green_data = np.atleast_3d(block_reduce(im[np.arange(1,len(im),2)],(1,down_sample_factor,down_sample_factor),func=np.mean))
+                blue_data = np.atleast_3d(block_reduce(im[np.arange(0,len(im),2)],(1,down_sample_factor,down_sample_factor),func=np.mean))
+            elif blue_frame!=green_frame:
+                green_data = np.atleast_3d(block_reduce(im[np.arange(0,len(im),2)],(1,down_sample_factor,down_sample_factor),func=np.mean))
+                blue_data = np.atleast_3d(block_reduce(im[np.arange(1,len(im),2)],(1,down_sample_factor,down_sample_factor),func=np.mean))           
+            
+            wf_green[green_frame:green_frame+green_data.shape[0]]= green_data
+            wf_blue[blue_frame:blue_frame+blue_data.shape[0]]= blue_data
+
+        blue_frame = blue_frame+blue_data.shape[0]
+        green_frame = green_frame+green_data.shape[0]
         print('\nFile ' + str(i+1) + ' of ' + str(len(tif_filepaths)) + ' complete')
-    return wf_blue[:frame,:,:], wf_green[:frame,:,:]
+    return wf_blue[:blue_frame,:,:], wf_green[:green_frame,:,:]
+
+def dff_mean_calculation(image_stack):
+    pixel_mean = np.mean(image_stack,axis=0)
+    dff = (image_stack-pixel_mean)/pixel_mean
+    return dff
+
+def dff_median_calculation(image_stack):
+    pixel_median = np.median(image_stack,axis=0)
+    dff = (image_stack-pixel_median)/pixel_median
+    return dff
+
+def hemo_correction(signal_dff,hemo_dff):
+    if signal_dff.shape[0] != hemo_dff.shape[0]:
+        print('WARNING! image stack size mismatch. truncating to hemo signal size')
+        corrected_dff = signal_dff[:hemo_dff.shape[0],:,:]-hemo_dff
+    else:
+        corrected_dff = signal_dff-hemo_dff
+    return corrected_dff
+
+def image_contrast_adjust(im_array,quantile = .99):
+    im = im_array-np.quantile(im_array[im_array==im_array],.2)
+    im[im!=im]=0
+    im[im<0]=0
+    
+    im = im/np.quantile(im,quantile)
+    im[im>1]=1
+    return im*255
+
+def create_vessel_and_skull_image(tif_folder, n_channels=2, down_sample_factor= 2):
+    tif_filepaths = list(tif_folder.glob('*.tif'))
+    im = io.imread(str(tif_filepaths[0]))    
+    v_substack = block_reduce(im[np.arange(0,2000,n_channels)],(1,down_sample_factor,down_sample_factor),func=np.mean)
+    vessel_im = v_substack.std(axis=0)
+    vessel_im = image_contrast_adjust(vessel_im,quantile = .99)
+    
+    s_substack = block_reduce(im[np.arange(1,2000,n_channels)],(1,down_sample_factor,down_sample_factor),func=np.mean)
+    skull_im = s_substack[100,:,:]
+    skull_im = image_contrast_adjust(skull_im,quantile = .95)   
+    return vessel_im.astype(np.uint8), skull_im.astype(np.uint8)
+    
+#####################
+# functinos for Allen CCF alignment
 
 def set_transform_anchors(stationary_image, warp_image):
     figure = plt.figure()
