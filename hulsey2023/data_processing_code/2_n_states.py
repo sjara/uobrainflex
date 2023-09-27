@@ -7,7 +7,6 @@ Created on Mon Apr 18 10:36:14 2022
 
 ####### use crossvalidation to determine log likelihood of test-set fits of models across #of states
 
-
 import os
 import numpy as np
 import glob
@@ -16,8 +15,6 @@ from sklearn.model_selection import KFold
 import time
 import ssm
 import ray
-
-
 
 @ray.remote
 def MAP_hmm_fit(subject, num_states, training_inpts, training_choices, test_inpts, test_choices):
@@ -64,8 +61,7 @@ def MLE_hmm_fit(subject, num_states, training_inpts, training_choices, test_inpt
     test_ll = hmm.log_probability(test_choices,test_inpts)/np.concatenate(test_inpts).shape[0]
     return hmm, train_ll, test_ll
 
-
-base_folder = 'E:\\Hulsey_et_al_2023\\'
+base_folder = input("Enter the main directory path") + '\\'
 hmm_trials_paths = glob.glob(base_folder + 'hmm_trials\\' + '*hmm_trials.npy')
 
 max_states = 7

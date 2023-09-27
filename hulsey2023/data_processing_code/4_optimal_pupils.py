@@ -26,9 +26,8 @@ f = '#ec410d'
 cols = [a,b,c,d,e,f]
 
 
-base_folder = 'E:\\Hulsey_et_al_2023\\'
+base_folder = input("Enter the main directory path") + '\\'
 hmm_trials_paths = glob.glob(base_folder + 'hmm_trials\\*hmm_trials.npy')
-
 
 max_degree = 7
 nKfold = 5
@@ -47,14 +46,6 @@ for m, mouse_path in enumerate(hmm_trials_paths):
         if all([len(trials.query('hmm_state==0'))>10,np.isin('post_hoc_pupil_diameter',trials.columns)]):
             all_trials = all_trials.append(trials)
             pupil_measure = 'post_hoc_pupil_diameter'
-            print('included')
-        elif all([len(trials.query('hmm_state==0'))>10,np.isin('pupil_diameter',trials.columns)]):
-            all_trials = all_trials.append(trials)
-            pupil_measure = 'pupil_diameter'
-            print('included --- NO POST HOC PUPIL')
-            print(trials.iloc[0]['file_name'])
-        else:
-            print('excluded')
         
     this_measure = 'post_hoc_pupil_diameter'
     step = .02
@@ -119,11 +110,11 @@ for m, mouse_path in enumerate(hmm_trials_paths):
             coeffs1 = np.polyfit(x,y,degree+1)
             p1 = np.poly1d(coeffs1)
             rsqs[m,degree,ii] = r2_score(test_y, p1(test_x))
-            plt.subplot(nKfold,max_degree,degree+1+ii*max_degree)
-            plt.plot(test_x,test_y)
-            plt.plot(test_x,p1(test_x),'r')
-            plt.plot(x,y,'k')
-            plt.title(r2_score(test_y, p1(test_x)))
+            # plt.subplot(nKfold,max_degree,degree+1+ii*max_degree)
+            # plt.plot(test_x,test_y)
+            # plt.plot(test_x,p1(test_x),'r')
+            # plt.plot(x,y,'k')
+            # plt.title(r2_score(test_y, p1(test_x)))
             rsqs[m,degree,ii] = r2_score(test_y, p1(test_x))
     
      
@@ -138,6 +129,8 @@ for m, mouse_path in enumerate(hmm_trials_paths):
             state_probs[m,1,i] = len(np.where(state[trial_ind] == 1)[0])/len(trial_ind)   
             state_probs[m,2,i] = len(np.where(state[trial_ind] > 1)[0])/len(trial_ind)   
         
+        
+    # if there are enough trials below lowest bin, combine them to include
     ind = np.where(state_probs[m,0,:]==state_probs[m,0,:])[0][0]-1
     trial_ind = np.where(measure<=bins_upper[ind])[0]        
     if len(trial_ind)>5:
@@ -148,12 +141,12 @@ for m, mouse_path in enumerate(hmm_trials_paths):
 
 # use elbow of r2 vs poly degree as degrees final fit 
 poly_degree=[]
-plt.figure()
+# plt.figure()
 for m, mouse_rsqs in enumerate(rsqs):
     mouse_rsqs = rsqs[m,:,:]
     mouse_rsqs = np.mean(mouse_rsqs,axis=1)
-    plt.subplot(5,3,m+1)
-    plt.plot(mouse_rsqs,'k')
+    # plt.subplot(5,3,m+1)
+    # plt.plot(mouse_rsqs,'k')
     # for i in range(1,7):
     i=6
     x1 = 0
@@ -163,7 +156,7 @@ for m, mouse_rsqs in enumerate(rsqs):
     b = (x1*y2 - x2*y1)/(x1-x2)
     m = (y1-y2)/(x1-x2)
     
-    plt.plot([0,i],[mouse_rsqs[0],m*x2 + b],'k')
+    # plt.plot([0,i],[mouse_rsqs[0],m*x2 + b],'k')
         
     
     mins=[]
@@ -185,7 +178,7 @@ for m, mouse_rsqs in enumerate(rsqs):
         
         xx = np.argmin(dist)*.01
         yy = m*xx+b
-        plt.plot([ii,xx],[mouse_rsqs[ii],yy])
+        # plt.plot([ii,xx],[mouse_rsqs[ii],yy])
 
     this_degree = np.argmax(signs)+2
     poly_degree.append(this_degree)
@@ -197,69 +190,68 @@ np.save(base_folder + 'misc\\pupil_opt_polyfit_rsqs.npy',rsqs)
 
 ######## plot data 
 
-
-
-optimal_pupils=[]
-plt.figure()
-for m, mouse_rsqs in enumerate(rsqs):
-    mouse_rsqs = rsqs[m,:,:]
-    mouse_rsqs = np.mean(mouse_rsqs,axis=1)
-    if m <11:
-        sp_ind = m*2+1
-    elif m==11:
-        sp_ind = 25
-    elif m==12:
-        sp_ind = 29
+# optimal_pupils=[]
+# plt.figure()
+# for m, mouse_rsqs in enumerate(rsqs):
+#     mouse_rsqs = rsqs[m,:,:]
+#     mouse_rsqs = np.mean(mouse_rsqs,axis=1)
+#     if m <11:
+#         sp_ind = m*2+1
+#     elif m==11:
+#         sp_ind = 25
+#     elif m==12:
+#         sp_ind = 29
             
     
-    plt.subplot(8,4,sp_ind+1)
-    mouse_state_probs = state_probs[m,:,:]
-    for i,state_prob in enumerate(mouse_state_probs):
-        plt.plot(bins_lower,state_prob,color=cols[i],zorder=10-i)
-        if i==0:
-            y= state_prob
-            x2=bins_lower[y==y]
-            y=y[y==y]    
-            opt_xs = np.arange(x2[0],x2[-1],.001)
-            this_poly_degree = poly_degree[m]
+#     plt.subplot(8,4,sp_ind+1)
+#     mouse_state_probs = state_probs[m,:,:]
+#     for i,state_prob in enumerate(mouse_state_probs):
+#         plt.plot(bins_lower,state_prob,color=cols[i],zorder=10-i)
+#         if i==0:
+#             y= state_prob
+#             x2=bins_lower[y==y]
+#             y=y[y==y]    
+#             opt_xs = np.arange(x2[0],x2[-1],.001)
+#             this_poly_degree = poly_degree[m]
             
         
-            coeffs = np.polyfit(x2.astype(np.float32),y.astype(np.float32),this_poly_degree)
-            this_poly = np.poly1d(coeffs)
+#             coeffs = np.polyfit(x2.astype(np.float32),y.astype(np.float32),this_poly_degree)
+#             this_poly = np.poly1d(coeffs)
             
-            ys = this_poly(opt_xs)
-            this_opt_pupil = opt_xs[ys.argmax()].round(5)
-            optimal_pupils.append(this_opt_pupil)
+#             ys = this_poly(opt_xs)
+#             this_opt_pupil = opt_xs[ys.argmax()].round(5)
+#             optimal_pupils.append(this_opt_pupil)
             
-            plt.plot(opt_xs,ys,'k',zorder=10)
-            plt.plot([this_opt_pupil,this_opt_pupil],[0,1],'k--',zorder=10)
-            plt.xlim([0,1])
+#             plt.plot(opt_xs,ys,'k',zorder=10)
+#             plt.plot([this_opt_pupil,this_opt_pupil],[0,1],'k--',zorder=10)
+#             plt.xlim([0,1])
+#             plt.ylabel(hmm_trials_paths[m][-20:-15])
         
-    plt.subplot(8,4,sp_ind)
-    plt.plot(np.arange(1,8),mouse_rsqs,'k')
-    # plt.ylim([0,1])
-    plt.plot(poly_degree[m],mouse_rsqs[poly_degree[m]-1],'sk')
+#     plt.subplot(8,4,sp_ind)
+#     plt.plot(np.arange(1,8),mouse_rsqs,'k')
+#     # plt.ylim([0,1])
+#     plt.plot(poly_degree[m],mouse_rsqs[poly_degree[m]-1],'sk')
 
-plt.subplot(3,4,11)
+# plt.subplot(3,4,11)
 
-plt.hist(poly_degree)
+# plt.hist(poly_degree)
     
 
-plt.subplot(3,4,12)
+# plt.subplot(3,4,12)
 
-lineardata = rsqs[:,0,:].mean(axis=1)
-data_2deg = rsqs[:,1,:].mean(axis=1)
-all_rsqs = rsqs[:,:,:].mean(axis=2)
-data=[]
-for m,degree in enumerate(poly_degree):
-    data.append(all_rsqs[m,degree-1])
-plt.boxplot([lineardata,data_2deg,data],showfliers=False)
-x = np.ones(len(data))+np.random.randn(len(data))*.05
-plt.plot(x,lineardata,'ko')
-x = 1+np.ones(len(data))+np.random.randn(len(data))*.05
-plt.plot(x,data_2deg,'ko')
-x = 2+np.ones(len(data))+np.random.randn(len(data))*.05
-plt.plot(x,data,'ko')
+# lineardata = rsqs[:,0,:].mean(axis=1)
+# data_2deg = rsqs[:,1,:].mean(axis=1)
+# all_rsqs = rsqs[:,:,:].mean(axis=2)
+# data=[]
+# for m,degree in enumerate(poly_degree):
+#     data.append(all_rsqs[m,degree-1])
+# plt.boxplot([lineardata,data_2deg,data],showfliers=False)
+# x = np.ones(len(data))+np.random.randn(len(data))*.05
+# plt.plot(x,lineardata,'ko')
+# x = 1+np.ones(len(data))+np.random.randn(len(data))*.05
+# plt.plot(x,data_2deg,'ko')
+# x = 2+np.ones(len(data))+np.random.randn(len(data))*.05
+# plt.plot(x,data,'ko')
     
 
 

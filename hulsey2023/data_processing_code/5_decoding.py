@@ -7,7 +7,6 @@ Created on Fri May 13 14:55:59 2022
 
 # load hmm_trials and use cross-validated SVM classifiers to predcit states from arousal & movement measures
 
-
 import os
 import numpy as np
 import glob
@@ -77,10 +76,6 @@ for m in range(len(hmm_trials_paths)):
         if all([len(trials.query('hmm_state==0'))>10,np.isin('post_hoc_pupil_diameter',trials.columns)]):
             all_trials = all_trials.append(trials)
             pupil_measure = 'post_hoc_pupil_diameter'
-        elif all([len(trials.query('hmm_state==0'))>10,np.isin('pupil_diameter',trials.columns)]):
-            all_trials = all_trials.append(trials)
-            pupil_measure = 'pupil_diameter'
-
     
     # drop trials with indeterminate state
     state_trials = all_trials.query('hmm_state==hmm_state')

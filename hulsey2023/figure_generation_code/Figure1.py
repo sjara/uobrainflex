@@ -31,8 +31,10 @@ e ='#f26c2a'
 f = '#ec410d'
 cols = [a,b,c,d,e,f]
 
-base_folder = 'D:\\Hulsey\\Hulsey_et_al_2023\\'
-hmm_trials_paths = glob.glob(base_folder + 'hmm_trials\\*hmm_trials.npy')
+
+base_folder = input("Enter the main directory path") + '\\'
+
+hmm_trials_paths = glob.glob(base_folder + '\\hmm_trials\\*hmm_trials.npy')
 
 
 fig = plt.figure(figsize=[16,12])
@@ -79,7 +81,7 @@ axJ=plt.subplot(position=[.75,row3_y,.1,row3_height-.01])
 axK=plt.subplot(position=[.875,row3_y,.1,row3_height-.01])
 
 
-#planel A
+#planel A - rig image
 axA=plt.subplot(position=[.06,row1_y,.3,row1_height])
 rig_file = base_folder + 'images\\behavior_rig_schematic.bmp' 
 rig_image_data = plt.imread(rig_file)
@@ -114,28 +116,34 @@ axA.text(350,100,'Screen',ha='center',va='center')
 axA.axis('off')
 
 
-#panel B
-stimulus_example_file = base_folder + 'images\\stimulus_examples.bmp'
+#panel B - stimulus examples
+stimulus_example_file = base_folder + 'images\\stimuli.png'
 stim_example = plt.imread(stimulus_example_file)
 
 axB.imshow(stim_example)
-axB.plot([25,345],[65,65],'k')
-axB.plot([25,345],[130,130],'k')
-axB.plot([25,25],[130,127],'k')
-axB.plot([105,105],[130,127],'k')
-axB.plot([185,185],[130,127],'k')
-axB.plot([265,265],[130,127],'k')
-axB.plot([345,345],[130,127],'k')
-axB.text(185,140,'Stimulus value',ha='center',va='top')
-axB.text(25,140,'-1',ha='center',va='top')
-axB.text(345,140,'1',ha='center',va='top')
-axB.text(100,0,'Left-Target',ha='center',va='center')
-axB.text(270,0,'Right-Target',ha='center',va='center')
+axB.plot([670,8460],[1540,1540],'k')
+axB.plot([670,8460],[2980,2980],'k')
+axB.plot([670,670],[2980,2880],'k')
+axB.plot([2618,2618],[2980,2880],'k')
+axB.plot([4566,4566],[2980,2880],'k')
+axB.plot([6514,6514],[2980,2880],'k')
+axB.plot([8460,8460],[2980,2880],'k')
+
+axB.text(4566,3200,'Stimulus value',ha='center',va='top')
+axB.text(670,3200,'-1',ha='center',va='top')
+axB.text(8460,3200,'1',ha='center',va='top')
+
+axB.text(2430,50,'Left-Target',ha='center',va='center')
+axB.text(6710,50,'Right-Target',ha='center',va='center')
+
+axB.text(550,1880,'40',ha='right',va='center')
+axB.text(550,2740,'5',ha='right',va='center')
+axB.text(550,2310,'kHz',ha='right',va='center')
 
 
 axB.axis('off')
 
-#panel C
+#panel C - trial structure
 trial_structure_file = base_folder + 'images\\trial_structure.bmp'
 trial_structure = plt.imread(trial_structure_file)
 
@@ -261,9 +269,7 @@ while len(np.unique(state_similarity)) != len(state_similarity):
 
 
 
-#Panel D
-
-
+#Panel D - all trial psychometrics
 all_psychos = np.full([len(no_hmm_trials),3,6],np.nan)
 
 state=0
@@ -282,7 +288,7 @@ for i in range(all_psychos.shape[1]):
     data = np.concatenate([np.array([data[0]]),data,np.array([data[-1]])])
     x = np.concatenate([np.array([-1.1]),xvals,np.array([1.1])])
     
-    axD.plot(x,data,color='k',linestyle=line_style[i],linewidth=3,zorder=-1)
+    axD.plot(x,data,color='k',linestyle=line_style[i],linewidth=2,zorder=-1)
 
 for i in range(all_psychos.shape[1]):
     data = np.nanmean(all_psychos[:,i,:],axis=0)
@@ -291,13 +297,13 @@ for i in range(all_psychos.shape[1]):
     for j in range(len(data)):
         axD.errorbar(xvals[j],data[j],error[j],color='k',linewidth=3)
         
-axD.plot(-1.1,np.nanmean(all_psychos[:,0,0]),color='k',marker=marker[0],markersize=15,markeredgecolor='k',markeredgewidth=3)
-axD.plot(1.1,np.nanmean(all_psychos[:,0,-1]),color='k',marker=marker[0],markersize=15,markeredgecolor='k',markeredgewidth=3)
-axD.plot(-1.1,np.nanmean(all_psychos[:,1,0]),color='k',marker=marker[1],markersize=15,markeredgecolor='k',markeredgewidth=3)
-axD.plot(1.1,np.nanmean(all_psychos[:,1,-1]),color='k',marker=marker[1],markersize=15,markeredgecolor='k',markeredgewidth=3)
+axD.plot(-1.1,np.nanmean(all_psychos[:,0,0]),color='k',marker=marker[0],markersize=12,markeredgecolor='k',markeredgewidth=3)
+axD.plot(1.1,np.nanmean(all_psychos[:,0,-1]),color='k',marker=marker[0],markersize=12,markeredgecolor='k',markeredgewidth=3)
+axD.plot(-1.1,np.nanmean(all_psychos[:,1,0]),color='k',marker=marker[1],markersize=12,markeredgecolor='k',markeredgewidth=3)
+axD.plot(1.1,np.nanmean(all_psychos[:,1,-1]),color='k',marker=marker[1],markersize=12,markeredgecolor='k',markeredgewidth=3)
 
-axD.plot(-1.1,np.nanmean(all_psychos[:,2,0]),color='k',marker=marker[2],markersize=15,markeredgecolor='k',markeredgewidth=3)
-axD.plot(1.1,np.nanmean(all_psychos[:,2,-1]),color='k',marker=marker[2],markersize=15,markeredgecolor='k',markeredgewidth=3)
+axD.plot(-1.1,np.nanmean(all_psychos[:,2,0]),color='k',marker=marker[2],markersize=12,markeredgecolor='k',markeredgewidth=3)
+axD.plot(1.1,np.nanmean(all_psychos[:,2,-1]),color='k',marker=marker[2],markersize=12,markeredgecolor='k',markeredgewidth=3)
 
 
 axD.set_xticks([-1,-.5,0,.5,1],[-1,'',0,'',1])
@@ -313,23 +319,29 @@ axD.set_yticks(np.arange(0,1.1,.25))
 axD.set_yticklabels(['0','','0.5','','1'])
 for spine in ['top','right']:
    axD.spines[spine].set_visible(False)
+   
+axD.text(-1.05,.9,'Left',ha='center',va='bottom')
+axD.text(1.1,.775,'Right',ha='center',va='bottom')
+axD.text(1.1,.45,'No\nresp.',ha='center',va='top')
+   
 
 axD.text(-22.5,1.3,'A',fontsize=30,ha='right',va='top')
 axD.text(-12.3,1.3,'B',fontsize=30,ha='right',va='top')
 axD.text(-12.3,.3,'C',fontsize=30,ha='right',va='top')
 axD.text(-3,1.3,'D',fontsize=30,ha='right',va='top')
 
-#Panel E
+#Panel E - example session
 axE=plt.subplot(position=[.2,.325,.775,.25])
 
 hand=[]
 lg=[]
 
+#plot hmm posterior probabilities
 t_zero = trial_data['start_time'].iloc[0]
 t = trial_data['start_time'].values-t_zero
 for i, probs in enumerate(trial_probs):
     axE.plot(t,probs,color=cols[state_similarity[i]],linewidth=3,clip_on=False)
- 
+
 if len(session_dwell.index)>0:   
     for idx in session_dwell.index: 
         start_t = t[session_dwell.loc[idx,'first_trial']]
@@ -342,6 +354,7 @@ if len(session_dwell.index)>0:
 axE.add_patch(Rectangle((t[0],1.15), t[-1], .095,color=[.7,.7,.7],alpha=.2,clip_on=False,edgecolor = None,linewidth=0))
 axE.add_patch(Rectangle((t[0],1.05), t[-1], .095,color=[.7,.7,.7],alpha=.4,clip_on=False,edgecolor = None,linewidth=0))
 
+#plot individual trial outcomes/stim values
 for i in range(len(trial_data)):
     choice = trial_data.iloc[i]['choice']
     outcome = trial_data.iloc[i]['outcome']
@@ -374,7 +387,7 @@ for i in range(len(trial_data)):
     axE.scatter(t[i],1.4-outcome/10+np.random.randn()/85,color=m,s=msize,clip_on=False,edgecolor = None,linewidth=0,zorder=10)
             
 
-
+## plaen E legends
 axE.set_ylabel('p(state)')
 axE.set_yticks([0,.2,.4,.6,.8,1,1.1,1.2,1.3],[0,.2,.4,.6,.8,1,'Miss','Error','Hit'])
 axE.set_ylim([0,1])
@@ -388,8 +401,8 @@ axE.text(-20,1.2,'Error',ha='right',va='center')
 axE.text(-20,1.3,'Hit',ha='right',va='center')
 
 for i,state in enumerate(np.unique(session_dwell['state']).astype(int)):
-    axE.add_patch(Rectangle((-800,.2*(3-i)), 300, .15,color=cols[state_similarity[state]],alpha=.2,clip_on=False,edgecolor = None,linewidth=0))
-axE.text(-900,.2,'HMM state', rotation=90)
+    axE.add_patch(Rectangle((-800,.2*(3-i)+.1), 300, .15,color=cols[state_similarity[state]],alpha=.2,clip_on=False,edgecolor = None,linewidth=0))
+axE.text(-900,.3,'HMM state', rotation=90)
 
 # example trial markers
 axE.scatter(-900,1.2,color='k',s = 35,clip_on=False,edgecolor = None,linewidth=0)
@@ -403,9 +416,13 @@ axE.text(-900,1.1,'L',horizontalalignment='center',verticalalignment='center')
 axE.text(-400,1.1,'R',horizontalalignment='center',verticalalignment='center')
 
 # time scale
-axE.plot([0,t[-1]],[.8,.8],'k--',linewidth=.5)
-axE.plot([-800,-500],[.95,.95],'k',linewidth=5,clip_on=False)
-axE.text(-650,.85,'5 minutes',horizontalalignment='center',verticalalignment='center')
+axE.plot([0,t[-1]],[.8,.8],'k--',linewidth=1)
+# axE.plot([-800,-500],[.95,.95],'k',linewidth=5,clip_on=False)
+# axE.text(-650,.85,'5 minutes',horizontalalignment='center',verticalalignment='center')
+axE.plot([675,975],[.175,.175],'k',linewidth=5,clip_on=False)
+axE.text(825,.1,'5 minutes',horizontalalignment='center',verticalalignment='center')
+axE.text(75,-.025,'Time',horizontalalignment='left',verticalalignment='top')
+
 
 # state labels
 axE.text(100,.5,'Left bias',rotation=90,ha='center',va='center')
@@ -413,11 +430,14 @@ axE.text(280,.5,'Disengaged',rotation=90,ha='center',va='center')
 axE.text(1100,.5,'Optimal',rotation=90,ha='center',va='center')
 axE.text(1942,.5,'Right bias',rotation=90,ha='center',va='center')
 axE.text(3230,.5,'Indeterminate',rotation=90,ha='center',va='center')
+axE.text(2600,.78,'Threshold',ha='center',va='top')
+
+
 
 axE.text(-1050,1.3,'E',horizontalalignment='center',verticalalignment='center',fontsize=30)
 
 
-#panel F
+#panel F GLM-HMM cartoon
 GLM_GMM_cartoon_file = base_folder + 'images\\GLM-HMM_cartoon.png'
 GLM_GMM_cartoon = plt.imread(GLM_GMM_cartoon_file)
 
@@ -441,7 +461,7 @@ axF.axis('off')
 
 axE.text(-1050,-.15,'F',horizontalalignment='center',verticalalignment='center',fontsize=30)
 
-#Panel G
+#Panel G - model selection
 
 def plateu(data,threshold=.001):
     ind = np.where(np.diff(data)>threshold)[0]
@@ -452,7 +472,7 @@ subject = "BW046"
 LL = np.load(glob.glob(base_folder+'\\n_states\\'+subject+'*MAP_test*')[-1])
 example_LL = LL.mean(axis=-1).max(axis=0)
 num_states = plateu(example_LL)
-example_predictive_accuracy = np.load(base_folder + 'misc\\BW046_predictive_accuracy.npy')
+example_predictive_accuracy = np.load(base_folder + 'misc\\' + subject + '_predictive_accuracy.npy').mean(axis=-1)[1,:]
 
 
 axG.plot(example_LL-example_LL[0],'r') 
@@ -468,9 +488,9 @@ axG.set_yticklabels(['0.0','','0.1','','0.2','','0.3'])
 ax2=axG.twinx()
 ax2.set_position(axG.get_position())
 ax2.plot(example_predictive_accuracy*100,'k')
-ax2.set_ylabel("Predictive accuracy",rotation=270,ha='center',va='bottom')
-ax2.set_yticks(np.arange(70,91,5))
-ax2.set_yticklabels(['70','','80','','90'])
+ax2.set_ylabel("Test set predictive accuracy",rotation=270,ha='center',va='bottom')
+ax2.set_yticks(np.arange(70,81,5))
+ax2.set_yticklabels(['70','75','80'])
 ax2.spines['top'].set_visible(False)
 axG.spines['top'].set_visible(False)
 axG.spines['left'].set_color('red')
@@ -479,7 +499,7 @@ axG.tick_params(axis='y', colors='red')
 
 axE.text(250,-.15,'G',horizontalalignment='center',verticalalignment='center',fontsize=30)
 
-#Panel H
+#Panel H - state psychometrics
 axs = [axH,axI,axJ,axK]
 n=1
 for state, state_ID in enumerate(state_similarity):
@@ -545,5 +565,5 @@ for state, state_ID in enumerate(state_similarity):
 axE.text(1500,-.15,'H',horizontalalignment='center',verticalalignment='center',fontsize=30)
 
 
-plt.savefig(base_folder + 'figures\\figure_1.pdf')
-plt.savefig(base_folder + 'figures\\figure_1.png', dpi=300)
+# plt.savefig(base_folder + 'figures\\figure_1.pdf')
+# plt.savefig(base_folder + 'figures\\figure_1.png', dpi=300)

@@ -1,30 +1,14 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri Nov  4 12:07:37 2022
+Created on Tue Aug  1 11:42:24 2023
 
 @author: admin
 """
 
-import os
+
+from pathlib import Path
 import numpy as np
-import glob
-import pandas as pd
-from sklearn import svm
-from sklearn.model_selection import KFold
-from sklearn import preprocessing
-import multiprocessing as mp
-from uobrainflex.behavioranalysis.decoding import decode_states
-import matplotlib.pyplot as plt
-from scipy.stats import ttest_rel
-from scipy.stats import ttest_ind
-from scipy import stats
-from sklearn import preprocessing
-from sklearn.inspection import DecisionBoundaryDisplay
-from matplotlib import colors
-from matplotlib import cm
-import ray
-
-
+import scipy
 from matplotlib import rcParams
 rcParams['font.family'] = 'sans-serif'
 rcParams['font.sans-serif'] = ['Tahoma']
@@ -34,388 +18,332 @@ rcParams['axes.titlesize']= 15
 rcParams['ytick.labelsize']= 15
 rcParams['xtick.labelsize']= 15
 import matplotlib.pyplot as plt
+import pandas as pd
+from scipy import stats
 
+folder = Path(r'D:\Hulsey\Hulsey_et_al_2023\hmm_trials')
+save_folder = Path(r'C:\Users\admin\Desktop\figure dump\measures_correlations')
 
-def inter_from_256(x):
-    return np.interp(x=x,xp=[0,255],fp=[0,1])
-
-cdict = {'red':   [(0.0,  inter_from_256(103), inter_from_256(103)),
-                   (0.5,  1, 1),
-                   (1.0,  inter_from_256(196), inter_from_256(196))],
-
-         'green': [(0.0,  inter_from_256(146), inter_from_256(146)),
-                   (0.5, 1, 1),
-                   (1.0,  inter_from_256(17), inter_from_256(17))],
-
-         'blue':  [(0.0,  inter_from_256(146), inter_from_256(146)),
-                   (0.5,  1, 1),
-                   (1.0,  inter_from_256(17), inter_from_256(17))]}
-
-
-opt_dis_cm = colors.LinearSegmentedColormap('new_cmap',segmentdata=cdict)
-
-#############################
-  
-cdict = {'red':   [(0.0,  inter_from_256(103), inter_from_256(103)),
-                   (0.5,  1, 1),
-                   (1.0,  inter_from_256(255), inter_from_256(255))],
-
-         'green': [(0.0,  inter_from_256(146), inter_from_256(146)),
-                   (0.5, 1, 1),
-                   (1.0,  inter_from_256(165), inter_from_256(165))],
-
-         'blue':  [(0.0,  inter_from_256(146), inter_from_256(146)),
-                   (0.5,  1, 1),
-                   (1.0,  inter_from_256(30), inter_from_256(30))]}
-
-opt_sub_cm = colors.LinearSegmentedColormap('new_cmap',segmentdata=cdict)
-###########################3
 a = '#679292'
 b ='#c41111'
 c ='#ffc589'
 d ='#ffa51e'
 e ='#f26c2a'
 f = '#ec410d'
-cols = [a,b,c,d,e,f,'k']
+cols = [a,b,c,d,e,f]
 
-
-base_folder = 'D:\\Hulsey\\Hulsey_et_al_2023\\'
-hmm_trials_paths = glob.glob(base_folder + 'hmm_trials\\*hmm_trials.npy')
-
-@ray.remote
-def fit_predict_map_SVM(train_feature,train_class,test_feature,test_class):
-    SVM = svm.SVC(kernel='rbf')
-    SVM.fit(train_feature,train_class)  
-    accuracy = SVM.score(test_feature,test_class)
-    
-    response =SVM.decision_function(X_grid)
-    response=response.reshape(xx0.shape)
-    return accuracy,response
-
-def scale(data):
-    min_max_scaler = preprocessing.MinMaxScaler()
-    return min_max_scaler.fit_transform(data)
-
-
-features = ['post_hoc_pupil_diameter','post_hoc_pupil_std10','face_energy','face_std_10','running_speed','running_std10','movement','movement_std']
-# for m in range(mouse_weights.shape[0]):
-
-xx0, xx1 = np.meshgrid(
-    np.linspace(0, 1, 100),
-    np.linspace(0, 1, 100))
-
-X_grid = np.c_[xx0.ravel(), xx1.ravel()]
-
-fig=plt.figure()
-nKfold=5
-
-process=[]
-ms=[]
-zs=[]
-states=[]
-folds=[]
-run=[]
-n_run=1
-for m in range(len(hmm_trials_paths)):
-    hmm_trials = np.load(hmm_trials_paths[m],allow_pickle = True)
-    subject = os.path.basename(hmm_trials_paths[m])[:5]
-    print(subject)
-    
-    
+def get_psychos(hmm_trials):  
     all_trials = pd.DataFrame()
     for trials in hmm_trials:
-        if np.unique(trials['hmm_state'])[0]==0:
+        all_trials = all_trials.append(trials)
+    
+    psycho = np.full((int(np.unique(all_trials['hmm_state'].dropna()).max()+1),3,len(np.unique(all_trials['inpt']))),np.nan)
+    for state in np.unique(all_trials['hmm_state'].dropna()):
+        for ind, choice in enumerate(np.unique(all_trials['choice'])):
+            for ind2, this_inpt in enumerate(np.unique(all_trials['inpt'])):
+                state_trials=len(all_trials.query("hmm_state==@state and inpt==@this_inpt"))
+                if state_trials>0:
+                    psycho[int(state),ind,ind2]=len(all_trials.query("choice==@choice and hmm_state==@state and inpt==@this_inpt"))/state_trials
+    
+    xvals = np.unique(all_trials['inpt'])
+    return psycho, xvals   
+
+def compare_psychos(psycho1,psycho2):
+    all_similarity=[]    
+    for state in psycho2:
+        similarity=[]
+        for state2 in psycho1:
+            similarity.append(np.nansum(abs(state-state2)))
+        all_similarity.append(similarity)
+    return np.array(all_similarity)
+
+all_r=np.full([13,6],np.nan)
+all_states_r = np.full([13,4,3],np.nan)
+
+hmm_trials_paths = list(folder.glob('*hmm_trials*'))
+state_probs_move = np.full([len(hmm_trials_paths),6,40],np.nan)
+subjects = []
+for m in range(len(hmm_trials_paths)):
+    hmm_trials_path = list(folder.glob('*hmm_trials*'))[m]
+    subjects.append(hmm_trials_paths[m].name[:5])
+    
+    
+    hmm_trials = np.load(hmm_trials_path, allow_pickle = True)
+    
+    trial_date=[]
+    for trials in hmm_trials:
+        trial_date.append(trials['file_name'].iloc[0])
+    
+    hmm_trials=hmm_trials[np.argsort(trial_date)]        
+        
+    psychos, xvals = get_psychos(hmm_trials)
+    sort_psychos = np.zeros([6,3,6])
+    #optimal
+    sort_psychos[0,0,:3] = 1
+    sort_psychos[0,1,3:] = 1
+    #disengaged
+    sort_psychos[1,2,:] = 1
+    #all left
+    sort_psychos[2,0,:] = 1
+    #left and no
+    sort_psychos[3,0,:3] = 1
+    sort_psychos[3,2,3:] = 1
+    #all right
+    sort_psychos[4,1,:] = 1
+    #right and no
+    sort_psychos[5,1,3:] = 1
+    sort_psychos[5,2,:3] = 1
+    
+    
+    if psychos.shape[2]==8:
+        del_ind = np.unique(np.where([psychos!=psychos])[-1])
+        psychos = np.delete(psychos,del_ind,axis=2)
+    if psychos.shape[2]==8:
+        del_ind = [1,6]
+        psychos = np.delete(psychos,del_ind,axis=2)
+
+    similarity = compare_psychos(sort_psychos,psychos)
+    state_similarity = np.nanargmin(similarity,axis=0)
+    state_similarity = np.nanargmin(similarity,axis=1)
+
+    while len(np.unique(state_similarity)) != len(state_similarity):
+        states, counts = np.unique(state_similarity,return_counts=True)
+        for confused_state in states[np.where(counts>1)[0]]:
+            confused_ind = np.where(state_similarity == confused_state)[0]
+            confused_state_similarity = similarity[confused_ind,:]
+            replace_state_ind = np.argmax(confused_state_similarity[:,confused_state])
+            replace_state_similarity = similarity[confused_ind[replace_state_ind],:]
+            repalcement_state = np.argsort(replace_state_similarity)[1]
+            state_similarity[confused_ind[replace_state_ind]]=repalcement_state
+        print('fixed with ' + str(state_similarity))
+        
+        
+    all_trials = pd.DataFrame()
+    for i,trials in enumerate(hmm_trials):
+        if all([len(trials.query('hmm_state==0'))>10,np.isin('post_hoc_pupil_diameter',trials.columns)]):
             all_trials = all_trials.append(trials)
-            
-    all_trials = all_trials.query('post_hoc_pupil_std10==post_hoc_pupil_std10')
-    all_trials = all_trials.query('face_std_10==face_std_10')
-    all_trials = all_trials.query('running_std10==running_std10')
-    all_trials = all_trials.query('post_hoc_pupil_diameter==post_hoc_pupil_diameter')
-    all_trials = all_trials.query('face_energy==face_energy')
-    all_trials = all_trials.query('running_speed==running_speed')
-    all_trials['movement'] = stats.zscore(all_trials['face_energy']) + stats.zscore(all_trials['running_speed'])
-    all_trials['movement_std'] = stats.zscore(all_trials['face_std_10']) + stats.zscore(all_trials['running_std10'])
+            pupil_measure = 'post_hoc_pupil_diameter'
+        elif all([len(trials.query('hmm_state==0'))>10,np.isin('pupil_diameter',trials.columns)]):
+            all_trials = all_trials.append(trials)
+            pupil_measure = 'pupil_diameter'
+       
+    measures = ['post_hoc_pupil_diameter','post_hoc_pupil_std10','face_energy','face_std_10','running_speed','running_std10']
+    for measure in measures:
+        all_trials=all_trials.query(measure+'=='+measure)
+
+    face_z = scipy.stats.zscore(all_trials['face_energy'])
+    run_z = scipy.stats.zscore(all_trials['running_speed'])
+    all_trials['movement'] = face_z+run_z
+
+    state_trials = all_trials.query('hmm_state==hmm_state')
+    for state in np.unique(state_trials['hmm_state'].values):
+        state_data = state_trials.query('hmm_state==@state')[pupil_measure].values
+        state_data= state_data[state_data==state_data]
+    good_pupil = state_trials.query(pupil_measure+'=='+pupil_measure)
+
+    ########## movement
+    bin_size=.25
+    p_state=np.full([int(10/bin_size),6],np.nan)
+    x_vals = np.arange(-5,5,bin_size)
+    for k,p in enumerate(x_vals):
+        p2 = p+bin_size
+        p_trials = good_pupil.query('movement>=@p and movement<@p2')
+        if len(p_trials)>0:
+            state,counts = np.unique(p_trials['hmm_state'],return_counts=True)
+            for j in range(len(counts)):
+                if sum(counts)>5:
+                    p_state[k,state_similarity[int(state[j])]]=counts[int(j)]/sum(counts)
+                    state_probs_move[m,state_similarity[int(state[j])],k]=counts[int(j)]/sum(counts)
+
+      
+    #
+    k = np.where(state_probs_move[m,:,:]==state_probs_move[m,:,:])[1][0]
+    k2 = np.where(state_probs_move[m,:,:]==state_probs_move[m,:,:])[1][-1]
+    for state in np.unique(good_pupil['hmm_state']).astype(int):
+        these_state_probs = state_probs_move[m,state_similarity[0],:]
+        
+    p2=x_vals[k+1]
+    p=-7
+    p_trials = good_pupil.query('movement>=@p and movement<@p2')
+    state,counts = np.unique(p_trials['hmm_state'],return_counts=True)
+    for j in range(len(counts)):
+        if sum(counts)>5:
+            p_state[k,int(state[j])]=counts[int(j)]/sum(counts)
+            state_probs_move[m,state_similarity[int(state[j])],k]=counts[int(j)]/sum(counts)
+    state_probs_move[m,:,:k]=np.nan    
     
-    for feature in features:
-        all_trials[feature] = all_trials[feature]-min(all_trials[feature])
-        all_trials[feature] = all_trials[feature]/max(all_trials[feature])
+    for state in np.unique(good_pupil['hmm_state']):
+        these_probs = state_probs_move[m,state_similarity[int(state)],k:k2+1]
+        these_probs[these_probs!=these_probs]=0
+        state_probs_move[m,state_similarity[int(state)],k:k2+1] = these_probs
+  
+    measures = ['post_hoc_pupil_diameter','face_energy','running_speed']
+
+    for measure in measures:
+        all_trials=all_trials.query(measure+'=='+measure)
     
-    ax=[]
-    for z in range(4):
-        if z==0:
-            best_features=[[0,1]]
-        elif z==1:
-            best_features=[[2,3]]
-        elif z==2:
-            best_features=[[4,5]]
-        elif z==3:
-            best_features=[[6,7]]
-        
-            
-        
-        
-        opt_trials = all_trials.query('hmm_state==0')
-        opt_trials = opt_trials.iloc[np.random.permutation(len(opt_trials))]
-        dis_trials = all_trials.query('hmm_state==1')
-        dis_trials = dis_trials.iloc[np.random.permutation(len(dis_trials))]
-        sub1_trials = all_trials.query('hmm_state==2')
-        sub1_trials = sub1_trials.iloc[np.random.permutation(len(sub1_trials))]
-        sub2_trials = all_trials.query('hmm_state==3')
-        sub2_trials = sub2_trials.iloc[np.random.permutation(len(sub2_trials))]
-                
-        
-        all_data = [dis_trials]
-        if len(sub1_trials)>10:
-            all_data.append(sub1_trials)
-        if len(sub2_trials)>10:
-            all_data.append(sub2_trials)
-        for state,data in enumerate(all_data):
-            print(state)
-            these_opt_trials=opt_trials.iloc[:len(data)]
-            data=data.iloc[:len(these_opt_trials)]
-            
-           
-            xopt = these_opt_trials[features[best_features[0][0]]].to_numpy()
-            yopt = these_opt_trials[features[best_features[0][1]]].to_numpy()
-            xdis = data[features[best_features[0][0]]].to_numpy()
-            ydis = data[features[best_features[0][1]]].to_numpy()
-        
-            ind = round(len(data)/5*4)
-            
-            xopt = xopt.reshape(-1, 1)
-            yopt = yopt.reshape(-1, 1)
-            
-            xdis = xdis.reshape(-1, 1)
-            ydis = ydis.reshape(-1, 1)
-            
-            
-            kf = KFold(n_splits=nKfold, shuffle=True, random_state=None)  
-            for ii, (train_index, test_index) in enumerate(kf.split(range(len(data)))):
-                print(f"    kfold {ii} TRAIN:", len(train_index), "TEST:", len(test_index))
-           
-                for iii in range(n_run):
-                    opt_train_feature = np.stack([xopt[train_index],yopt[train_index]])[:,:,0]
-                    dis_train_feature = np.stack([xdis[train_index],ydis[train_index]])[:,:,0]
-                    
-                    train_feature = np.concatenate([opt_train_feature.T,dis_train_feature.T])
-                    train_class = np.concatenate([np.zeros(len(train_index)),np.ones(len(train_index))])
-                    
-                    opt_test_feature = np.stack([xopt[test_index],yopt[test_index]])[:,:,0]
-                    dis_test_feature = np.stack([xdis[test_index],ydis[test_index]]) [:,:,0]   
-                    test_feature = np.concatenate([opt_test_feature.T,dis_test_feature.T])
-                    test_class = np.concatenate([np.zeros(len(test_index)),np.ones(len(test_index))])
-                    
-                    if iii>0:
-                        train_class=train_class[np.random.permutation(len(train_class))]
-                    
-                    process.append(fit_predict_map_SVM.remote(train_feature,train_class,test_feature,test_class))
-                    ms.append(m)
-                    zs.append(z)
-                    states.append(state)
-                    folds.append(ii)
-                    run.append(iii)
-                
-                
-                
-all_response=np.full([len(hmm_trials_paths),3,4,nKfold,100,100],np.nan)
-all_response2=np.full([len(hmm_trials_paths),3,4,nKfold,100,100],np.nan)
-all_accuracy = np.full([len(hmm_trials_paths),3,4,nKfold],np.nan)
-
-for i,p in enumerate(process):
-    print(str(i) + ' of ' + str(len(process)))
-    a,b = ray.get(p)
-    all_accuracy[ms[i],states[i],zs[i],folds[i]]=a
+    face = all_trials['face_energy'].to_numpy()
+    face_z = stats.zscore(face)
+    run = all_trials['running_speed'].to_numpy()
+    run_z = stats.zscore(run)
+    movement = face_z+run_z
+    all_trials['movement'] = movement
+    hmm_state = all_trials['hmm_state'].to_numpy()
+    opt_ind = np.where(hmm_state==0)[0]
+    sub_ind = np.where(hmm_state>1)[0]
+    dis_ind = np.where(hmm_state==1)[0]
+    indi_ind = np.where(hmm_state!=hmm_state)[0]
+    pup = all_trials['post_hoc_pupil_diameter'].to_numpy()
     
-    norm_b=np.array(b)
-    norm_b[norm_b>1]=1
-    norm_b[norm_b<-1]=-1
-    all_response[ms[i],states[i],zs[i],folds[i],:,:]=b
-    all_response2[ms[i],states[i],zs[i],folds[i],:,:]=norm_b
+    for i,data in enumerate([[face,run],[face,movement],[run,movement],[pup,face],[pup,run],[pup,movement]]):
+        
+        coeffs = np.polyfit(data[0],data[1],1)
+        this_poly = np.poly1d(coeffs)
+        
+        r,p= stats.pearsonr(data[0],data[1])
+        plt.title('r = '+str(r.round(3))+'\np = '+f"{p:.02g}")
+        all_r[m,i] = r
+
     
+    for i,data in enumerate([face,run,movement]):
+        for s,ind in enumerate([opt_ind,dis_ind,sub_ind,indi_ind]):
+            r,p= stats.pearsonr(pup[ind],data[ind])
+            all_states_r[m,s,i]=r
+    
+m = 5 
+hmm_trials_path = list(folder.glob('*hmm_trials*'))[m]
+print(hmm_trials_path)
+hmm_trials = np.load(hmm_trials_path, allow_pickle = True)
 
-# np.save(base_folder+'individual_features_rbf_acc.npy',all_accuracy)
-# np.save(base_folder+'individual_features_rbf_map.npy',all_response)
-# np.save(base_folder+'individual_features_rbf_norm_map.npy',all_response2)
+all_trials = pd.DataFrame()
+for i,trials in enumerate(hmm_trials):
+    if all([len(trials.query('hmm_state==0'))>10,np.isin('post_hoc_pupil_diameter',trials.columns)]):
+        all_trials = all_trials.append(trials)
+        pupil_measure = 'post_hoc_pupil_diameter'
+    elif all([len(trials.query('hmm_state==0'))>10,np.isin('pupil_diameter',trials.columns)]):
+        all_trials = all_trials.append(trials)
+        pupil_measure = 'pupil_diameter'
 
+measures = ['post_hoc_pupil_diameter','face_energy','running_speed']
 
-### import all feature combind rbf svm classifier results
-files = glob.glob(base_folder + 'decoder_data\\*_rbf*SVM*acc*1000.npy')
+for measure in measures:
+    all_trials=all_trials.query(measure+'=='+measure)
 
-all_feat_acc = []
-for file in files:
-    data = np.load(file)
-    all_feat_acc.append(data)
-all_feat_acc = np.stack(all_feat_acc)
-all_feat_acc = all_feat_acc.mean(axis=-1)
+face = all_trials['face_energy'].to_numpy()
+face_z = stats.zscore(face)
+run = all_trials['running_speed'].to_numpy()
+run_z = stats.zscore(run)
+movement = face_z+run_z
+all_trials['movement'] = movement
+hmm_state = all_trials['hmm_state'].to_numpy()
+opt_ind = np.where(hmm_state==0)[0]
+sub_ind = np.where(hmm_state>1)[0]
+dis_ind = np.where(hmm_state==1)[0]
+indi_ind = np.where(hmm_state!=hmm_state)[0]
 
+pup = all_trials['post_hoc_pupil_diameter'].to_numpy()
 
-z_scores=np.full([13,6,15],np.nan)
-accuracies=np.full([13,6,15],np.nan)
-for m in range(all_feat_acc.shape[0]):
-    for s in range(all_feat_acc.shape[1]):
-        for cond in range(all_feat_acc.shape[3]):
-            shuffles = all_feat_acc[m,s,:,-1]
-            if all(shuffles==shuffles):
-                z=[]
-                for run in range(all_feat_acc.shape[2]):
-                    acc = all_feat_acc[m,s,run,cond]
-                    z.append((acc-shuffles.mean())/shuffles.std())
-                
-                
-                z_scores[m,s,cond]=np.mean(z)
-                accuracies[m,s,cond]=all_feat_acc[m,s,:,cond].mean()
+plt.figure(figsize=[16,20])
 
-
-
-fig = plt.figure(figsize=[16,13])
-
-row = [.1,.325]
-column = [.15, .35, .55, .75]
-size = .175
 ax=[]
-ax2=[]
-features =['Pupil diameter','Face m.e.','Locomotion Speed','Movemenet index']
-sbp=[]
-for i in range(4):
-    # ax.append(plt.subplot(4,4,i+9))
-    if i<3:
-        ax.append(plt.subplot(position = [column[i],row[1],size,size]))
-    elif i==3:
-        ax.append(plt.subplot(position = [column[i],row[1],size,size]))
-    plt.imshow(all_response2[:,0,i,:,:,:].mean(axis=0).mean(axis=0),cmap=opt_dis_cm)
-    plt.gca().invert_yaxis()    
-    plt.clim([-1,1])
-    plt.title(features[i])
-    plt.xticks(np.arange(-.5,101,25),['','','','',''])
+xlabels=['Face motion energy (a.u.)','Movement index (a.u.)','Movement index (a.u.)']
+ylabels=['Locomotion speed (m/s)','Face motion energy (a.u.)','Locomotion speed (m/s)']
+for i,data in enumerate([[face,run],[movement,face],[movement,run]]):
+    ax.append(plt.subplot(6,4,i+1))
+
+    plt.plot(data[0],data[1],'o',color=[.7,.7,.7],markersize=1)
+    plt.xlabel(xlabels[i])
+    plt.ylabel(ylabels[i])
+    
+    if np.isin(i,[0,2]):
+        plt.yticks(np.arange(-.05,.36,.05),['','0.0','','0.1','','0.2','','0.3',''])
     if i==0:
-        plt.yticks(np.arange(-.5,101,25),np.arange(0,1.1,.25))
-        plt.ylabel('10 trial std. (norm)')
-    else:
-        plt.yticks(np.arange(-.5,101,25),['','','','',''])
-    if i ==3:
-        # ax2 = plt.subplot(position = [column[i]+.175,row[1],.15,.15])
-        # plt.imshow(all_response2[:,0,i,:,:60,:10].mean(axis=0).mean(axis=0),cmap=opt_dis_cm)
-        cbar = plt.colorbar(ax=ax)
-        cbar.set_ticks(np.arange(-1,1.1,.5))
-        cbar.ax.set_yticks([-1,-0.5,0,0.5,1])
-        cbar.ax.tick_params() 
-        # cbar.set_label('Average decision function')
-        cbar.ax.get_yticks()
-
-    # ax2.append(plt.subplot(4,4,i+13))
-    ax2.append(plt.subplot(position = [column[i],row[0],size,size]))
-    subs = np.vstack(all_response2[:,1:,i,:,:,:])
-    subs=subs[np.unique(np.where(subs==subs)[0]),:,:,:]
-    plt.imshow(subs.mean(axis=0).mean(axis=0),cmap=opt_sub_cm)
-    plt.gca().invert_yaxis()    
-    plt.clim([-1,1])
-    plt.xticks(np.arange(-.5,101,25),np.arange(0,1.1,.25))
-    plt.xlabel('Value (norm)')
-    if i==0:
-        plt.yticks(np.arange(-.5,101,25),np.arange(0,1.1,.25))
-        plt.ylabel('10 trial std. (norm)')
-    else:
-        plt.yticks(np.arange(-.5,101,25),['','','','',''])
-    if i ==3:
-        cbar = plt.colorbar(ax=ax2)
-        cbar.set_ticks(np.arange(-1,1.1,.5),)
-        cbar.ax.set_yticks([-1,-0.5,0,0.5,1])
-        cbar.ax.tick_params() 
-        # cbar.set_label('Average decision function')
-        cbar.ax.get_yticks()
-
-# plt.subplot(4,4,9)
-ax[0].text(95,95,'N mice = 13',ha='right',va='top')
-ax[0].text(95,85,'n states = 13',ha='right',va='top')
-
-# plt.subplot(4,4,13)
-ax2[0].text(95,95,'N mice = 13',ha='right',va='top')
-ax2[0].text(95,85,'n states = 19',ha='right',va='top')
-
-# plt.subplot(4,4,12)
-ax[3].text(133,113,'Disengaged',ha='center',va='top')
-ax[3].text(133,-15,'Optimal',ha='center',va='bottom')
-ax[3].text(120,50,'Average decision function',rotation=90,va='center',ha='center')
-
-# plt.subplot(4,4,16)
-ax2[3].text(133,113,'Sub-optimal',ha='center',va='top')
-ax2[3].text(133,-15,'Optimal',ha='center',va='bottom')
-ax2[3].text(120,50,'Average decision function',rotation=90,va='center',ha='center')
-
-# plt.tight_layout()
-
-fig
-
-##
-ax.append(plt.subplot(position=[.075,.625,.375,.325]))
-cols=['k','m','#2278B5','#F57F20','#2FA148','r','k','#F57F20','#2FA148']
-l=[]
-idx=[0,2,3,4]
-for i in idx:#range(z_scores.shape[-1]):
-    these_accs = accuracies[:,:,i]
-    these_z = z_scores[:,:,i]
+        plt.xlim(0,1)
+        plt.xticks(np.arange(0,1.1,.2))
     
-    these_accs=these_accs[these_accs==these_accs]
-    these_z=these_z[these_z==these_z]
-    l.append(plt.scatter(these_accs,these_z,color=cols[i],alpha=.5,linewidth=0,edgecolor=None))
+    coeffs = np.polyfit(data[0],data[1],1)
+    this_poly = np.poly1d(coeffs)
     
-for i in idx:#range(z_scores.shape[-1]):
-    these_accs = accuracies[:,:,i]
-    these_z = z_scores[:,:,i]
+    if i > 0:
+        plt.plot([data[0].min(),data[0].max()],[this_poly(data[0].min()),this_poly(data[0].max())],'k')
     
-    these_accs=these_accs[these_accs==these_accs]
-    these_z=these_z[these_z==these_z]    
-    plt.errorbar(these_accs.mean(),these_z.mean(),yerr=stats.sem(these_z),xerr=stats.sem(these_accs),color=cols[i],linewidth=4)
-lg=[]
-
-lg = ['All measures','Pupil diaemter','Face motion energy','Locomotion speed']
+    r,p= stats.pearsonr(data[0],data[1])
+    if i > 0:
+        plt.title('r = '+str(r.round(3)))
+        plt.xlim(-5,5)
+    all_r[m,i] = r
     
-plt.legend(lg)
-plt.ylabel('z-score')
-plt.xlabel('Classification accuracy (%)')
-plt.plot([.4,1],[1.98,1.98],'k--')
-plt.plot([.5,.5],[0,12],'k--')
-plt.ylim([0,11])
-plt.xlim([.4,1])
-plt.xticks(np.arange(.5,1.1,.25),np.arange(50,101,25))
-plt.yticks(np.arange(0,11,2))
-plt.text(.3,11,'A',fontsize=30)
-plt.text(1.05,11,'B',fontsize=30)
-plt.text(.3,-3,'C',fontsize=30)
+ax.append(plt.subplot(6,4,4))
+bp = plt.boxplot(all_r[:,2],patch_artist=True,showfliers=False,positions=[0])
+for data in all_r[:,2]:
+    plt.plot(np.random.randn(1)/20,data,'ko',zorder=10)
+plt.ylim(0,1)
+plt.xlim(-.25,.25)
+plt.ylabel('movement index/measure\ncorrelation (r)')
+plt.xticks([])
 
 
-##
-ax.append(plt.subplot(position=[.535,.625,.375,.325]))
-cols=['k','m','#2278B5','#F57F20','#2FA148','#2278B5','#F57F20','#2FA148','r','k','#F57F20','#2FA148']
-l=[]
-idx=[0,5,6,7]
-for i in idx:#range(z_scores.shape[-1]):
-    these_accs = accuracies[:,:,i]
-    these_z = z_scores[:,:,i]
-    
-    these_accs=these_accs[these_accs==these_accs]
-    these_z=these_z[these_z==these_z]
-    l.append(plt.scatter(these_accs,these_z,color=cols[i],alpha=.5,linewidth=0,edgecolor=None))
-    
-for i in idx:#range(z_scores.shape[-1]):
-    these_accs = accuracies[:,:,i]
-    these_z = z_scores[:,:,i]
-    
-    these_accs=these_accs[these_accs==these_accs]
-    these_z=these_z[these_z==these_z]    
-    plt.errorbar(these_accs.mean(),these_z.mean(),yerr=stats.sem(these_z),xerr=stats.sem(these_accs),color=cols[i],linewidth=4)
-lg=[]
 
-lg = ['All measures','Shuffle pupil diaemter','Shuffle face motion energy','Shuffle locomotion speed']
-    
-plt.legend(lg)
-plt.ylabel('z-score')
-plt.xlabel('Classification accuracy (%)')
-plt.plot([.4,1],[1.98,1.98],'k--')
-plt.plot([.5,.5],[0,12],'k--')
-plt.ylim([0,11])
-plt.xlim([.4,1])
-plt.xticks(np.arange(.5,1.1,.25),np.arange(50,101,25))
-plt.yticks(np.arange(0,11,2))
+for patch in bp['boxes']:
+    patch.set_facecolor([.7,.7,.7])
+    patch.set_linewidth(0)
+for line in bp['medians']:
+    line.set_color('k')
+    line.set_linewidth(3)
+for line in bp['caps']:
+    line.set_color('k')
+    line.set_linewidth(2)
+for line in bp['whiskers']:
+    line.set_color('k')
+    line.set_linewidth(2)
 
+for spine in ['top','right']:
+    for axs in ax:
+        axs.spines[spine].set_visible(False)
+
+ax[0].text(-.2,.375,'A',fontsize=30)
+ax[0].text(1.1,.375,'B',fontsize=30)
+ax[0].text(3.75,.375,'C',fontsize=30)
+
+bin_size=.25
+p_state=np.full([int(10/bin_size),6],np.nan)
+  
+mouse_order = [1,5,0,7,8,2,9,10,3,11,12,4,6]
+
+Tasks = ['Aud. task','Vis. task']
+step = .02
+bins_lower = np.arange(0,1,step)
+for i, m in enumerate(mouse_order):
+    sp_ind = int(i+7)
+    if i==12:
+        sp_ind=21
+
+    plt.subplot(7,3,sp_ind)
+    plt.title(subjects[m])
+    if np.isin(sp_ind,[7,8]):
+        plt.title('Auditory task\n\n' + subjects[m])
+    if sp_ind== 9:
+        plt.title('Visual task\n\n' + subjects[m])
  
+    bin_size=.25
+    mouse_data = state_probs_move[m,:,:40]
+    x=np.arange(-5,5,bin_size)
+    for state in range(6):
+        y= mouse_data[state,:]
+        plt.plot(x,y,color = cols[state])
+    plt.xlim([-5,5])
+    plt.ylim([0,1])
+    plt.xticks(np.arange(-5,5.1,1),[])
+    
+    if np.isin(sp_ind,[16,17,21]):
+        plt.xticks(np.arange(-5,5.1,1),['',-4,'',-2,'',0,'',2,'',4,''])
+        plt.xlabel('Movement index (a.u.)')
+
+    plt.yticks([0,.5,1],[])
+    
+    if np.isin(sp_ind,[7,10,13,16,21]):
+        plt.yticks([0,.5,1],[0,.5,1])
+        plt.ylabel('p(state)')
+
+
+    

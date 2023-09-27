@@ -40,7 +40,7 @@ def MLE_hmm_fit(subject, num_states, training_inpts, training_choices):
     return hmm, train_ll
 
 
-base_folder = 'E:\\Hulsey_et_al_2023\\'
+base_folder = input("Enter the main directory path") + '\\'
 hmm_trials_paths = glob.glob(base_folder + 'hmm_trials\\*hmm_trials.npy')
 save_folder = base_folder
 
@@ -68,14 +68,12 @@ for m in range(len(hmm_trials_paths)):
         
     data = np.array([ray.get(p) for p in processes])
    
-    
+    # select HMM with highest log likelihood
     hmm = data[np.argmax(data[:,1]),0]
     
     # input posterior probabilities to hmm_trials, and permute the hmm to match states across subjects
     probs,hmm_trials = flex_hmm.get_posterior_probs(hmm, hmm_trials)
     hmm = flex_hmm.permute_hmm(hmm, hmm_trials)
     probs,hmm_trials = flex_hmm.get_posterior_probs(hmm, hmm_trials, occ_thresh = .8)
-    # flex_hmm.plot_state_psychometrics(subject,hmm_trials)
-    # flex_hmm.p_optimal_by_feature(subject, hmm_trials)
     np.save(save_folder + 'hmm_trials\\' + subject + '_hmm_trials.npy',hmm_trials)
     np.save(save_folder + 'hmms\\' + subject + '_hmm.npy',hmm)

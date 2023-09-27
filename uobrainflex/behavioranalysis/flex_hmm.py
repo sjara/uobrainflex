@@ -387,6 +387,13 @@ def get_inpts_from_hmm_trials(hmm_trials):
         inpts.extend(these_inpts)
     return inpts
 
+def get_pupils_from_hmm_trials(hmm_trials):
+    pupils=list([])
+    for session in hmm_trials:
+        these_pupils = session['post_hoc_pupil_diameter'].values
+        pupils.append(these_pupils)
+    return pupils
+
 def get_true_choices_from_hmm_trials(hmm_trials):
     true_choices=list([])
     for session in hmm_trials:
