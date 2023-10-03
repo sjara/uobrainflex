@@ -1,10 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Mon Apr 18 10:36:14 2022
-
-@author: admin
-"""
-
 ####### use crossvalidation to determine log likelihood of test-set fits of models across #of states
 
 import os

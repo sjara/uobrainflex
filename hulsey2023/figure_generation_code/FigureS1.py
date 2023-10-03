@@ -1,11 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Fri Jul 14 13:39:46 2023
-
-@author: admin
-"""
-
-
 from pathlib import Path
 import numpy as np
 import scipy
@@ -23,11 +15,8 @@ from uobrainflex.nwb import loadbehavior as load
 from matplotlib.patches import Rectangle
 from scipy import stats
 
-folder = Path(r'D:\Hulsey\Hulsey_et_al_2023')
-save_folder = Path(r'C:\Users\admin\Desktop\figure dump\meaure_psth_by_state')
-
-
-folder = Path(r'D:\Hulsey\Hulsey_et_al_2023')
+base_folder = input("Enter the main directory path")
+folder = Path(x)
 
 r_states=np.full([13,6,4],np.nan)
 p_states=np.full([13,6,4],np.nan)
@@ -364,6 +353,6 @@ for spine in ['bottom']:
     for axs in fig.axes[:2]:
         axs.spines[spine].set_visible(False)
         
-plt.savefig(r'D:\Hulsey\Hulsey_et_al_2023\figures\Figure_ITI_Supplement.pdf')
+# plt.savefig(r'D:\Hulsey\Hulsey_et_al_2023\figures\Figure_ITI_Supplement.pdf')
         
         

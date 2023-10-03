@@ -23,7 +23,7 @@ e ='#f26c2a'
 f = '#ec410d'
 cols = [a,b,c,d,e,f]
 
-base_folder = 'D:\\Hulsey\\Hulsey_et_al_2023\\'
+base_folder = input("Enter the main directory path") + '\\'
 hmm_paths = glob.glob(base_folder + 'hmms\\*hmm.npy')
 hmm_trials_paths = glob.glob(base_folder + 'hmm_trials\\*hmm_trials.npy')
 

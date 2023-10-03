@@ -1,10 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Apr 26 11:43:19 2022
-
-@author: admin
-"""
-
 # load hmm_trials data to determine relationship between pupil diameter and hmm state.
 # use cross validation to determine the appropriate dregree for a polynomial fitting relationship
 

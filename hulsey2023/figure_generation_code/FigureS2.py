@@ -1,10 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Fri Sep 23 14:46:37 2022
-
-@author: admin
-"""
-
 import os
 import numpy as np
 import glob
@@ -24,7 +17,7 @@ def plateu(data,threshold=.001):
     ind[np.argmax(data[ind+1])]
     return ind[np.argmax(data[ind+1])]+1
 
-base_folder = 'D:\\Hulsey\\Hulsey_et_al_2023\\'
+base_folder = input("Enter the main directory path") + '\\'
 hmm_trials_paths = glob.glob(base_folder + 'hmm_trials\\*hmm_trials.npy')
 
 
@@ -128,5 +121,5 @@ table.auto_set_column_width(col=0) # Provide integer list of columns to adjust
 table.auto_set_column_width(col=range(14)) # Provide integer list of columns to adjust
 
 
-plt.savefig(base_folder + 'figures\\figure_S1_v2.pdf')
-plt.savefig(base_folder + 'figures\\figure_S1_v2.png', dpi=300)
+# plt.savefig(base_folder + 'figures\\figure_S1_v2.pdf')
+# plt.savefig(base_folder + 'figures\\figure_S1_v2.png', dpi=300)

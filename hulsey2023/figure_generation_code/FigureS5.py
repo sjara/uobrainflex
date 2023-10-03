@@ -1,11 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Aug  1 11:42:24 2023
-
-@author: admin
-"""
-
-
 from pathlib import Path
 import numpy as np
 import scipy
@@ -21,8 +13,8 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from scipy import stats
 
-folder = Path(r'D:\Hulsey\Hulsey_et_al_2023\hmm_trials')
-save_folder = Path(r'C:\Users\admin\Desktop\figure dump\measures_correlations')
+base_folder = input("Enter the main directory path")
+folder = Path(base_folder)
 
 a = '#679292'
 b ='#c41111'

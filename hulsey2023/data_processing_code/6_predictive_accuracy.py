@@ -1,9 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Thu Jan 26 14:16:44 2023
-
-@author: admin
-"""
 import glob
 import numpy as np
 from sklearn.model_selection import StratifiedKFold
@@ -11,7 +5,6 @@ from uobrainflex.behavioranalysis import flex_hmm
 import matplotlib.pyplot as plt
 import ray
 from sklearn import svm
-
 
 base_folder = input("Enter the main directory path") + '\\'
 hmm_trials_paths = glob.glob(base_folder + 'hmm_trials\\*hmm_trials.npy')

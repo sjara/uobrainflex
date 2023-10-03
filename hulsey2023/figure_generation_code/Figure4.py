@@ -1,10 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Aug 15 14:12:27 2023
-
-@author: admin
-"""
-
 import os
 import numpy as np
 import glob
@@ -24,9 +17,6 @@ from pathlib import Path
 from matplotlib.patches import Polygon
 from matplotlib.patches import Rectangle
 
-folder = Path(r'D:\Hulsey\Hulsey_et_al_2023\hmm_trials')
-save_folder = Path(r'C:\Users\admin\Desktop\figure dump\measures_correlations')
-    
 a = '#679292'
 b ='#c41111'
 c ='#ffc589'
@@ -35,7 +25,7 @@ e ='#f26c2a'
 f = '#ec410d'
 cols = [a,b,c,[.6,.6,.6]]
 
-base_folder = 'D:\\Hulsey\\Hulsey_et_al_2023\\'
+base_folder = input("Enter the main directory path") + '\\'
 hmm_trials_paths = glob.glob(base_folder + 'hmm_trials\\*hmm_trials.npy')
 hmm_paths = glob.glob(base_folder + 'hmms\\*hmm.npy')
 
@@ -348,7 +338,7 @@ ax[-1].text(36,.976,'* *',ha='center')
 
 ####### plot example pupil vs movement correlations per state
 m = 6
-hmm_trials_path = list(folder.glob('*hmm_trials*'))[m]
+hmm_trials_path = hmm_trials_paths[m]
 hmm_trials = np.load(hmm_trials_path, allow_pickle = True)
 
 all_trials = pd.DataFrame()

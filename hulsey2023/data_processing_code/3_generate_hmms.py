@@ -1,11 +1,4 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Jul 19 08:02:59 2022
-
-@author: admin
-"""
 # load data & test set LL across states calculations to determine n_states and fit glm-hmm for each subject
-
 
 import os
 import numpy as np

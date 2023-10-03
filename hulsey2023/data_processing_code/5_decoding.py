@@ -1,10 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Fri May 13 14:55:59 2022
-
-@author: admin
-"""
-
 # load hmm_trials and use cross-validated SVM classifiers to predcit states from arousal & movement measures
 
 import os
@@ -22,7 +15,7 @@ from scipy import stats
 start_time = time.time()
 
 
-base_folder = 'E:\\Hulsey_et_al_2023\\'
+base_folder = input("Enter the main directory path") + '\\'
 hmm_trials_paths = glob.glob(base_folder + 'hmm_trials\\*hmm_trials.npy')
 
 measures_to_use = ['post_hoc_pupil_diameter', 'post_hoc_pupil_std10',

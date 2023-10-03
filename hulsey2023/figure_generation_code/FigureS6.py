@@ -1,10 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Fri Nov  4 12:07:37 2022
-
-@author: admin
-"""
-
 import os
 import numpy as np
 import glob
@@ -73,7 +66,7 @@ f = '#ec410d'
 cols = [a,b,c,d,e,f,'k']
 
 
-base_folder = 'D:\\Hulsey\\Hulsey_et_al_2023\\'
+base_folder = input("Enter the main directory path") + '\\'
 hmm_trials_paths = glob.glob(base_folder + 'hmm_trials\\*hmm_trials.npy')
 
 #generate grid to visualize SVM

@@ -1,9 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Thu Jan 26 14:16:44 2023
-
-@author: admin
-"""
 import glob
 import numpy as np
 from sklearn.model_selection import StratifiedKFold
@@ -13,7 +7,8 @@ import ray
 from sklearn import svm
 from pathlib import Path
 
-base_folder = Path(r'D:\Hulsey\Hulsey_et_al_2023')
+base_folder = input("Enter the main directory path")
+base_folder = Path(base_folder )
 hmm_trials_paths = list(base_folder.joinpath('hmm_trials').glob('*hmm_trials.npy'))
 hmm_paths = list(base_folder.joinpath('hmms').glob('*hmm.npy'))
 SVM = svm.SVC(probability = True)
