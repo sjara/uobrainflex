@@ -1,4 +1,5 @@
 This folder contains code associated with Hulsey et al (2023) *"Decision-making dynamics are predicted by arousal and uninstructed movements"*.
+Related NWB data files have been deposited on DANDI and are publicly available at https://doi.org/10.48324/dandi.000678/0.231004.2146
 
 The scripts run using the uobrainflex environment (https://github.com/sjara/uobrainflex), and a fork of the lindermanlab ssm package (https://github.com/mazzulab/ssm).
 Alternatively, the only alterations to the linerman lab ssm package (https://github.com/lindermanlab/ssm) required are included in the 'ssm_changes' folder.
@@ -13,5 +14,3 @@ The `data_processing_code` folder contains scripts to:
 7. Calculate predictive accuracies for models with up to 7 GLM-HMM states for example subject.
 
 The `figure_generation_code` folder contains scripts to generate paper figures from intermediate data saved by the processing scripts.
-
-NWB data files have been deposited on DANDI and are publicly available as of the date of publication. Accession numbers are listed in the key resources table of the publication.	
