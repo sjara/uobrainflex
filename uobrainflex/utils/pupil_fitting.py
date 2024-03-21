@@ -88,7 +88,7 @@ def combined_contours(crop_frame):
 def set_threshold(avi_files,x,y):
     frames = np.full([len(avi_files),np.diff(x)[0],np.diff(y)[0]],np.nan)
     for i, file in enumerate(avi_files):
-        cap = cv2.VideoCapture(file)
+        cap = cv2.VideoCapture(str(file))
         ret, frame = cap.read()
         frames[i,:,:] = np.array(frame[x[0]:x[1],y[0]:y[1],0])
         cap.release()
@@ -161,8 +161,10 @@ def extract_motion_energy(avi_files,x,y):
                     else:
                         mins_left = round((total_frames-count)/fps/60)
                     print(str(count) + ' of ' + str(total_frames) + ' frames complete at ' + str(fps) + 'fps. ' + str(mins_left) + ' minutes reamining.')
-                crop_frame = frame[x[0]:x[1],y[0]:y[1],0]
+                crop_frame = frame[x[0]:x[1],y[0]:y[1],0].astype(int)
                 if crop_frame.shape[:2] == last_frame.shape[:2]:
+                    if true_frame_count==0:
+                        last_frame = crop_frame
                     me[count] = np.mean(abs(last_frame-crop_frame))/255
                     count = count+1
                     last_frame = crop_frame
@@ -183,7 +185,7 @@ def fit_pupils(avi_files,x,y,threshold,method = 1):
     start_t = time.time()
     for i, filename in enumerate(avi_files):
         count = i*10000
-        cap = cv2.VideoCapture(filename)
+        cap = cv2.VideoCapture(str(filename))
         while(cap.isOpened()):
             ret, frame = cap.read()
             if ret == True:

@@ -396,3 +396,5 @@ plt.xticks(np.arange(.5,1.1,.25),np.arange(50,101,25))
 plt.yticks(np.arange(0,11,2))
 
  
+plt.savefig(base_folder + 'figures\\figure_S7.pdf')
+plt.savefig(base_folder + 'figures\\figure_S7.png', dpi=300)

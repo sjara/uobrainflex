@@ -1573,6 +1573,13 @@ def p_optimal_by_feature(subject , hmm_trials, save_folder = ''):
         plt.savefig(save_folder + subject + "_p_opt.png")
         plt.close()    
 
+def get_measure_from_hmm_trials(hmm_trials,measure):
+    data=list([])
+    for session in hmm_trials:            
+        data.append(np.round(session[measure].to_numpy(),2).astype(np.float16))
+    return data
+
+
 def report_cover(subject, nwbfilepath,save_folder):
     trial_data, trial_dict = load.load_trial_data(nwbfilepath)
     

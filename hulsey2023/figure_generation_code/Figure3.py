@@ -179,7 +179,7 @@ ax[-1].axis('off')
 ax[-1].set_xlim([trial_data['start_time'].iloc[0]*1000,trial_data['start_time'].iloc[-1]*1000])
 ax[-1].set_ylim([-.025,.875])
 
-
+ax[2].text(100000,-.06,'Time')
 
 ########### Gather p(state) vs measures data
 measures = ['post_hoc_pupil_diameter','post_hoc_pupil_std10','face_energy','face_std_10','running_speed','running_std10']
@@ -508,11 +508,11 @@ for spine in ['top','right']:
 
 ax[0].text(-75,50,'A',fontsize=30)
 ax[0].text(-75,625,'B',fontsize=30)
-ax[4].text(37,1.05,'C',fontsize=30)
-ax[4].text(105,1.05,'D',fontsize=30)
-ax[4].text(150,1.05,'E',fontsize=30)
-ax[4].text(220,1.05,'F',fontsize=30)
+ax[3].text(37,1.05,'C',fontsize=30)
+ax[3].text(105,1.05,'D',fontsize=30)
+ax[3].text(150,1.05,'E',fontsize=30)
+ax[3].text(220,1.05,'F',fontsize=30)
         
 
-# plt.savefig(base_folder + 'figures\\figure_3.pdf')
-# plt.savefig(base_folder + 'figures\\figure_3.png', dpi=300)
+plt.savefig(base_folder + 'figures\\figure_3.pdf')
+plt.savefig(base_folder + 'figures\\figure_3.png', dpi=300)

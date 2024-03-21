@@ -294,7 +294,7 @@ ax[-1].set_xlim([-1,42])
 ax[-1].set_ylim([.96,1.005])
 ax[-1].set_yticks([.968,.9865,1])
 ax[-1].set_yticklabels(['Loc.\nspeed','Face\nenergy','Pupil\ndiameter'])
-ax[-1].set_ylabel('Δ standard deviation')
+ax[-1].set_ylabel('Standard deviation')
 
 ax[-1].plot([2,2],[.991,.9935],'k',clip_on=False)
 ax[-1].text(1,.99075,'0.25%',ha='right',va='bottom')
@@ -455,5 +455,5 @@ ax[0].text(-1.5,-.025,'C',fontsize=30)
 ax[0].text(11.75,-.025,'D',fontsize=30)
 
 
-# plt.savefig(base_folder + 'figures\\figure_4.pdf')
-# plt.savefig(base_folder + 'figures\\figure_4.png', dpi=300)
+plt.savefig(base_folder + 'figures\\figure_4.pdf')
+plt.savefig(base_folder + 'figures\\figure_4.png', dpi=300)

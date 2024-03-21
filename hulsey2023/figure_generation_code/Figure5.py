@@ -228,6 +228,7 @@ ax.append(plt.subplot(position=[.75,.125,.225,.75]))
 cols=['k','m','#2278B5','#F57F20','#2FA148','r','k','#F57F20','#2FA148']
 l=[]
 idx=[0,5,2] ## [all measures, shuffle all but movement index, shuffle all but pupil]
+idx=[0,1,2,3,4,5] 
 for i in idx: # scatter plot all data points
     these_accs = accuracies[:,:,i]
     these_z = z_scores[:,:,i]
@@ -246,7 +247,7 @@ for i in idx: # show mean and sem as crosshairs
 lg=[]
 
 
-lg = ['All measures','Movement index','Pupil Diaemter']
+lg = ['All measures','Movement index','Pupil diameter']
     
 plt.legend(lg)
 plt.plot(accuracies[m,0,2],z_scores[m,0,2],'*',color=cols[2],markersize=12)
@@ -269,5 +270,5 @@ ax[0].text(140,102,'B',fontsize=30)
 ax[0].text(267,102,'C',fontsize=30)
 
 
-# plt.savefig(base_folder + 'figures\\figure_5.pdf')
-# plt.savefig(base_folder + 'figures\\figure_5.png', dpi=300)
+plt.savefig(base_folder + 'figures\\figure_5.pdf')
+plt.savefig(base_folder + 'figures\\figure_5.png', dpi=300)

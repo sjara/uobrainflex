@@ -11,6 +11,7 @@ from uobrainflex import config
 
 behavior_measures_keylist = ['pupil_size','whisker_energy','face_energy','running_speed']
 behavior_events_keylist = ['reward_right','reward_left','licks_left','licks_right']
+# ophys_acquisition_keylist = ['OnePhotonSeries_external']
 
 def get_file_path(subject, fileID):
     """   
@@ -230,6 +231,7 @@ def read_behavior_measures(nwbFileObj, speriod=0.001, measures=[], filt=True):
     if not measures:
         keys = nwbFileObj.acquisition.keys()
         measures = list(set(keys).symmetric_difference(set(behavior_events_keylist)))        
+        # measures = list(set(keys).symmetric_difference(set(behavior_events_keylist)).symmetric_difference(set(ophys_acquisition_keylist)))        
     
     # calculate number of periods to index with based on sample rate and length of longest measures data set
     max_time=np.full(len(measures),np.NaN)
@@ -251,10 +253,10 @@ def read_behavior_measures(nwbFileObj, speriod=0.001, measures=[], filt=True):
         ts_time = nwbFileObj.get_acquisition(key).timestamps[:]
         idx = (ts_time/speriod).round(0).astype(int) # divide by sample period and round to find appropriate index for this measure
         idx = idx[:ts_data.shape[0]]
-        print(idx)
-        print(len(idx))
-        print(len(ts_data))
-        print('')
+        # print(idx)
+        # print(len(idx))
+        # print(len(ts_data))
+        # print('')
         behavior_measures.loc[idx,key]=ts_data       # fit data to new sampling
         
     # interpolate dataframe to upsample and make full 
