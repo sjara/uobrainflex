@@ -57,8 +57,8 @@ def stage_2_pass(performance):
 
 def stage_3_pass(performance):
     return all([performance['hits_total']>150, performance['hits_left_ratio']<.66, performance['hits_left_ratio']>.33, 
-               performance['hit_rate_right']>.6, performance['hit_rate_left']>.6, 
-               performance['no_response_total']<40 or (performance['no_response_left_ratio']<.7 and performance['no_response_left_ratio']>.3)])
+               performance['hit_rate_right']>.6, performance['hit_rate_left']>.6]) 
+               # performance['no_response_total']<40 or (performance['no_response_left_ratio']<.7 and performance['no_response_left_ratio']>.3)])
 
 def stage_4_pass(performance):
     return all([performance['hits_total']>150, performance['hits_left_ratio']<.66, performance['hits_left_ratio']>.33, 
