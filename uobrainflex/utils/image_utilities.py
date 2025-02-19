@@ -53,8 +53,8 @@ def import_multi_tif(tif_folder, n_channels=2, down_sample_factor= 2,dtype=np.fl
         
         if n_channels==2:
             if i == 0:
-                wf_blue = np.ndarray([len(tif_filepaths)*file_frames, int(im.shape[1]/down_sample_factor), int(im.shape[2]/down_sample_factor)])
-                wf_green = np.ndarray([len(tif_filepaths)*file_frames, int(im.shape[1]/down_sample_factor), int(im.shape[2]/down_sample_factor)])
+                wf_blue = np.ndarray([len(tif_filepaths)*file_frames, int(im.shape[1]/down_sample_factor), int(im.shape[2]/down_sample_factor)],dtype=dtype)
+                wf_green = np.ndarray([len(tif_filepaths)*file_frames, int(im.shape[1]/down_sample_factor), int(im.shape[2]/down_sample_factor)],dtype=dtype)
                 
             if blue_frame == green_frame:
                 green_data = np.atleast_3d(block_reduce(im[np.arange(1,len(im),2)],(1,down_sample_factor,down_sample_factor),func=np.mean))
@@ -65,6 +65,14 @@ def import_multi_tif(tif_folder, n_channels=2, down_sample_factor= 2,dtype=np.fl
             
             wf_green[green_frame:green_frame+green_data.shape[0]]= green_data
             wf_blue[blue_frame:blue_frame+blue_data.shape[0]]= blue_data
+        elif n_channels==1:
+            if i == 0:
+                wf_blue = np.ndarray([len(tif_filepaths)*im.shape[0], int(im.shape[1]/down_sample_factor), int(im.shape[2]/down_sample_factor)],dtype=dtype)
+                wf_green = np.full([10000,100,100],np.nan) 
+                green_data = np.full([10000,100,100],np.nan) 
+            blue_data = np.atleast_3d(block_reduce(im,(1,down_sample_factor,down_sample_factor),func=np.mean))
+            wf_blue[blue_frame:blue_frame+blue_data.shape[0]]= blue_data
+
 
         blue_frame = blue_frame+blue_data.shape[0]
         green_frame = green_frame+green_data.shape[0]
@@ -110,6 +118,44 @@ def create_vessel_and_skull_image(tif_folder, n_channels=2, down_sample_factor= 
     skull_im = image_contrast_adjust(skull_im,quantile = .95)   
     return vessel_im.astype(np.uint8), skull_im.astype(np.uint8)
     
+def moving_average(x, w):
+    return np.convolve(x, np.ones(w), 'same') / w
+
+def dff_to_alpha(dff,fs=30):
+    alpha=dff.copy()
+    from scipy.signal import butter, filtfilt
+    b, a = butter(4, [3,6], btype='pass', analog=False, fs=fs)
+    for i in range(alpha.shape[1]):
+        print(i)
+        for j in range(alpha.shape[2]):
+            apower = filtfilt(b, a, alpha[:,i,j])
+            apower = moving_average(abs(apower), round(fs/3*2))
+            alpha[:,i,j]=apower.astype(np.float16)
+    return alpha
+
+def dff_to_sigma(dff,fs=30):
+    sigma=dff.copy()
+    from scipy.signal import butter, filtfilt
+    b, a = butter(4, [9,16], btype='pass', analog=False, fs=fs)
+    for i in range(sigma.shape[1]):
+        print(i)
+        for j in range(sigma.shape[2]):
+            spower = filtfilt(b, a, sigma[:,i,j])
+            spower = moving_average(abs(spower), round(fs/3))
+            sigma[:,i,j]=spower.astype(np.float16)
+    return sigma
+
+def dff_to_delta(dff,fs=30):
+    delta=dff.copy()
+    from scipy.signal import butter, filtfilt
+    b, a = butter(4, [1,4], btype='pass', analog=False, fs=fs)
+    for i in range(delta.shape[1]):
+        print(i)
+        for j in range(delta.shape[2]):
+            dpower = filtfilt(b, a, delta[:,i,j])
+            dpower = moving_average(abs(dpower), round(fs/3*2))
+            delta[:,i,j]=dpower.astype(np.float16)
+    return delta
 #####################
 # functinos for Allen CCF alignment
 
